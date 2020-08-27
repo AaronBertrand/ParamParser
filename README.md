@@ -19,10 +19,12 @@ The last two are not in the metadata anywhere, in any version up to and includin
 
 Parsing these default values out of the module definition with T-SQL seems like a fun idea (even [the docs](https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-parameters-transact-sql) suggest it), until you get beyond the simplest case. I tried back in 2006 ([after complaining about it to no avail](https://feedback.azure.com/forums/908035-sql-server/suggestions/32891455-populate-has-default-value-in-sys-parameters)), and again in 2009, and gave up both times. There are so many edge cases that make even finding the start and end of the parameter list difficult:
 
-- you can't easily parse for the first `AS` to mark the beginning of the body, since it can appear for other reasons;
-- you can't rely on the presence of `BEGIN` to mark the beginning of the body, since it is optional;
-- it is very hard to parse away both types of comments, which can appear anywhere (including inside string literals); and,
-- you can inadvertently find important keywords inside string literals. 
+- You can’t rely on the presence of (open and close parentheses) surrounding the parameter list, since they are optional (and may be found throughout the parameter list also).
+- You can't easily parse for the first AS to mark the beginning of the body, since it can appear for other reasons.
+- You can't rely on the presence of BEGIN to mark the beginning of the body, since it is optional.
+- It is hard to split on commas, since they can appear inside comments, string literals, and data type declarations (think (precision, scale)).
+- It is very hard to parse away both types of comments, which can appear anywhere, including inside string literals, and even inside other comments.
+- You can inadvertently find important keywords inside string literals and comments.
 
 Take this (intentionally ridiculous) example:
 
@@ -43,7 +45,11 @@ My first action on discovering that procedure would be to have the developer fix
 
 After answering a [recent question on Stack Overflow](https://stackoverflow.com/q/63581531/61305) about this, and tracing my steps back ~15 years, I came across [this great post](https://michaeljswart.com/2014/04/removing-comments-from-sql/) by Michael Swart. In that post, Michael uses the ScriptDom's [TSqlParser](https://docs.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.transactsql.scriptdom.tsqlparser) to remove both single-line and multi-line comments from a block of T-SQL. This gave me all the motivation I needed to take this a few steps further.
 
-### Dependencies
+What I ended up with is here, and this is what it was able to parse out of the above monstrosity:
+
+![Example result](https://sqlblog.org/wp-content/uploads/2020/08/param-parser-example.png)
+
+### Dependencies / How to Start
 
 I developed this solution using Visual Studio Code on a Mac. In order to debug and build, I had to install the OmniSharp C# extension, and update both SqlClient and ScriptDom packages.
 
@@ -51,4 +57,6 @@ I developed this solution using Visual Studio Code on a Mac. In order to debug a
 - Add the SqlClient and ScriptDom packages. At a Terminal in VS Code:
   - `dotnet add package System.Data.SqlClient --version 4.8.2`
   - `dotnet add package Microsoft.SqlServer.TransactSql.ScriptDom --version 150.4573.2`
-- Note that when you read this there may be newer versions of these packages available.
+  - _Note that when you read this there may be newer versions of these packages available._
+- Some of the database code (which you'll need in place on any instance before you can run the code) expects SQL Server 2016 or better (`DROP IF EXISTS`).
+- Update the code to use your connection string particulars, and either pass the target database in as the first argument (`ParamParser "targetDB"`) or change the `targetDB` variable in the code at runtime.
