@@ -1,25 +1,67 @@
+/*
+  The script is destructive. It drops the database if you ask it to,
+  and drops all objects automatically, so if you run the whole thing 
+  after collecting parameters for some modules, those will be lost.
+  
+  I have a TODO item to make this logic more robust and another to 
+  break the objects into their own scripts, but a script to "just 
+  install everything" is also useful. For now, you can just run the
+  script carefully and pick and choose the parts you want to change
+  in the event of deploying an updated version (leaving out the
+  drop and create table, for example).
+*/
+
 USE master;
 GO
 
+DECLARE @replaceDB_IfExists bit = 0;
+
+IF @replaceDB_IfExists = 1 AND DB_ID(N'ParamParser_Central') IS NOT NULL
+BEGIN
+  EXEC master.sys.sp_executesql N'
+    ALTER DATABASE ParamParser_Central SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE IF EXISTS ParamParser_Central;
+    CREATE DATABASE ParamParser_Central;';
+END
+
+IF DB_ID(N'ParamParser_Central') IS NULL
+BEGIN
+  CREATE DATABASE ParamParser_Central;
+END
+GO
+
+USE ParamParser_Central;
+GO
+
 /*
-ALTER DATABASE Utility SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-DROP DATABASE IF EXISTS Utility;
-GO
-CREATE DATABASE Utility;
-GO
+    Drop existing objects, including the table.
 */
 
-USE Utility; -- or wherever you put central DBA-type database objects
+IF OBJECT_ID(N'dbo.GetAllModulesThatHaveParams') IS NOT NULL
+BEGIN
+  DROP PROCEDURE dbo.GetAllModulesThatHaveParams;
+END
+
+IF OBJECT_ID(N'dbo.SaveModuleParams') IS NOT NULL
+BEGIN
+  DROP PROCEDURE dbo.SaveModuleParams;
+END
+
+IF TYPE_ID(N'dbo.ParamsWithDefaults') IS NOT NULL
+BEGIN
+  DROP TYPE dbo.ParamsWithDefaults;
+END
+
+IF OBJECT_ID(N'dbo.ModuleParams') IS NOT NULL
+BEGIN
+  DROP TABLE dbo.ModuleParams;
+END
 GO
 
 /*
-DROP PROCEDURE IF EXISTS dbo.SaveModuleParams, dbo.GetAllModulesWithParams;
-GO
-DROP TYPE IF EXISTS dbo.ParamsWithDefaults;
-GO
-DROP TABLE IF EXISTS dbo.ModuleParams;
-GO
+    TVP for accepting input from C#.
 */
+GO
 
 CREATE TYPE dbo.ParamsWithDefaults
 AS TABLE
@@ -31,6 +73,9 @@ AS TABLE
 );
 GO
 
+/*
+    Table for holding captured parameter information.
+*/
 CREATE TABLE dbo.ModuleParams
 (
     database_id        int,
@@ -45,6 +90,33 @@ CREATE TABLE dbo.ModuleParams
 );
 GO
 
+/*
+    Procedure to return all of the modules that have
+    parameters to the calling C# application.
+*/
+                           
+CREATE PROCEDURE dbo.GetAllModulesThatHaveParams
+  @dbname sysname = N'tempdb'
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  DECLARE @sql  nvarchar(max), 
+          @exec nvarchar(max) = QUOTENAME(@dbname) + N'.sys.sp_executesql';
+
+  SET @sql = N'SELECT object_id, definition = OBJECT_DEFINITION(object_id)
+    FROM sys.objects AS o 
+    WHERE type IN (N''P'', N''FN'', N''IF'', N''TF'')
+      AND EXISTS (SELECT 1 FROM sys.parameters WHERE object_id = o.object_id);';
+
+  EXEC @exec @sql;
+END
+GO
+                           
+/*
+    Procedure to store all of the parameter information.  
+*/
+GO
 CREATE PROCEDURE dbo.SaveModuleParams
   @dbname sysname = N'tempdb',
   @params AS dbo.ParamsWithDefaults READONLY
@@ -104,23 +176,5 @@ BEGIN
   EXEC @exec @sql, N'@dbname sysname', @dbname;
 
   COMMIT TRANSACTION;
-END
-GO
-
-CREATE PROCEDURE dbo.GetAllModulesThatHaveParams
-  @dbname sysname = N'tempdb'
-AS
-BEGIN
-  SET NOCOUNT ON;
-
-  DECLARE @sql  nvarchar(max), 
-          @exec nvarchar(max) = QUOTENAME(@dbname) + N'.sys.sp_executesql';
-
-  SET @sql = N'SELECT object_id, definition = OBJECT_DEFINITION(object_id)
-    FROM sys.objects AS o 
-    WHERE type IN (N''P'', N''FN'', N''IF'', N''TF'')
-      AND EXISTS (SELECT 1 FROM sys.parameters WHERE object_id = o.object_id);';
-
-  EXEC @exec @sql;
 END
 GO
