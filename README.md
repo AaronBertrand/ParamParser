@@ -58,5 +58,10 @@ I developed this solution using Visual Studio Code on a Mac. In order to debug a
   - `dotnet add package System.Data.SqlClient --version 4.8.2`
   - `dotnet add package Microsoft.SqlServer.TransactSql.ScriptDom --version 150.4573.2`
   - _Note that when you read this there may be newer versions of these packages available._
-- Some of the database code (which you'll need in place on any instance before you can run the code) expects SQL Server 2016 or better (`DROP IF EXISTS`).
 - Update the code to use your connection string particulars, and either pass the target database in as the first argument (`ParamParser "targetDB"`) or change the `targetDB` variable in the code at runtime.
+
+### Future Enhancements
+
+- Break database objects into separate files
+- More robust logic in the DatabaseSupport.sql script to handle changes
+- Command line arguments to support multiple target databases, all user databases
