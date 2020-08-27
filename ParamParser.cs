@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -11,7 +11,7 @@ namespace AB.ParamParser
     {
         static void Main(string[] args)
         {
-            var targetDB = "funky"; // update this fallback
+            var targetDB = "ParamParser_Demo"; // update this
 
             if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
             {
@@ -21,7 +21,7 @@ namespace AB.ParamParser
             string connString = new SqlConnectionStringBuilder // update this
             {
               DataSource         = "127.0.0.1",   
-              InitialCatalog     = "Utility",     
+              InitialCatalog     = "ParamParser_Central",     
               IntegratedSecurity = true
               //UserID           = "username",
               //Password         = "password"
