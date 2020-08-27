@@ -58,7 +58,13 @@ I developed this solution using Visual Studio Code on a Mac. In order to debug a
   - `dotnet add package System.Data.SqlClient --version 4.8.2`
   - `dotnet add package Microsoft.SqlServer.TransactSql.ScriptDom --version 150.4573.2`
   - _Note that when you read this there may be newer versions of these packages available._
-- Update the code to use your connection string particulars, and either pass the target database in as the first argument (`ParamParser "targetDB"`) or change the `targetDB` variable in the code at runtime.
+- Create the supporting database by running **ParamParser_Central.sql** (this creates a database called ParamParser_Central)
+- Update the code to use your connection string particulars
+- Build **ParamParser.cs** as part of a new console application
+- Test it out:
+  - To test the demo I've provided, run **ParamParser_Demo.sql** (this creates a database called ParamParser_Demo), the code references this as the target database by default
+  - To test against your own database, just pass the target database in as the first argument (`ParamParser "targetDB"`) or change the `targetDB` variable in the code at runtime
+  - In either case, inspect the contents of ParamParser_Central.dbo.ModuleParams
 
 ### Future Enhancements
 
