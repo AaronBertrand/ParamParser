@@ -54,10 +54,10 @@ The resulting code is being shared here, and this is what it was able to parse o
 This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the OmniSharp C# extension, and update both SqlClient and ScriptDom packages.
 
 - Install the [OmniSharp C# extension for VS Code](https://github.com/OmniSharp/omnisharp-vscode)
-- Add the System.Data.SqlClient and Microsoft.SqlServer.TransactSql.ScriptDom packages. At a Terminal in VS Code:
+- Add the System.Data.SqlClient and Microsoft.SqlServer.TransactSql.ScriptDom packages; at a Terminal in VS Code:
   - `dotnet add package System.Data.SqlClient --version 4.8.2`
   - `dotnet add package Microsoft.SqlServer.TransactSql.ScriptDom --version 150.4573.2`
-  - Note that when you read this there may be newer versions of these packages available. Check [here for SqlClient](https://www.nuget.org/packages/System.Data.SqlClient/) and [here for ScriptDom](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/).
+  - Note that when you read this there may be newer versions of these packages available; check [here for SqlClient](https://www.nuget.org/packages/System.Data.SqlClient/) and [here for ScriptDom](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/)
 - Create the supporting database by running **ParamParser_Central.sql** (this creates a database called ParamParser_Central)
 - Update the code to use your connection string particulars
 - Build **ParamParser.cs** as part of a new console application
