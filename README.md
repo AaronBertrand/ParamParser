@@ -71,5 +71,5 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
 
 - Break database objects into separate files
 - More robust logic in the DatabaseSupport.sql script to handle changes
-- Command line arguments to support multiple target databases, all databases, all user databases
+- Command line arguments to support multiple explicitly named databases or all (user) database flags
 - Connection info off in appconfig / JSON instead of within the app code
