@@ -61,11 +61,11 @@ I developed this solution using Visual Studio Code on a Mac. In order to debug a
 - Create the supporting database by running **ParamParser_Central.sql** (this creates a database called ParamParser_Central)
 - Update the code to use your connection string particulars
 - Build **ParamParser.cs** as part of a new console application
-  - The shortest path is to build a Hello World console app following [these easy steps](https://docs.microsoft.com/en-us/dotnet/core/tutorials/with-visual-studio-code) and then just replace the code in **Program.cs** with my code in **ParamParser.cs**.
+  - The shortest path is to build a Hello World console app following [these steps](https://docs.microsoft.com/en-us/dotnet/core/tutorials/with-visual-studio-code) and then just replace the code in **Program.cs** with the code from **ParamParser.cs**
 - Test it out:
   - To test the demo I've provided, run **ParamParser_Demo.sql** (this creates a database called ParamParser_Demo), the code references this as the target database by default
   - To test against your own database, just pass the target database in as the first argument (`ParamParser "targetDB"`) or change the `targetDB` variable in the code at runtime
-  - In either case, inspect the contents of ParamParser_Central.dbo.ModuleParams
+  - In either case, inspect the contents of ParamParser_Central.dbo.ModuleParams after running one or more times
 
 ### Future Enhancements
 
