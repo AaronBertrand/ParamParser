@@ -45,25 +45,25 @@ My first action on discovering that procedure would be to have the developer fix
 
 After answering a [recent question on Stack Overflow](https://stackoverflow.com/q/63581531/61305) about this, and tracing my steps back ~15 years, I came across [this great post](https://michaeljswart.com/2014/04/removing-comments-from-sql/) by Michael Swart. In that post, Michael uses the ScriptDom's [TSqlParser](https://docs.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.transactsql.scriptdom.tsqlparser) to remove both single-line and multi-line comments from a block of T-SQL. This gave me all the motivation I needed to take this a few steps further.
 
-What I ended up with is here, and this is what it was able to parse out of the above monstrosity:
+The resulting code is being shared here, and this is what it was able to parse out of that small monstrosity:
 
 ![Example result](https://sqlblog.org/wp-content/uploads/2020/08/param-parser-example.png)
 
 ### Dependencies / How to Start
 
-I developed this solution using Visual Studio Code on a Mac. In order to debug and build, I had to install the OmniSharp C# extension, and update both SqlClient and ScriptDom packages.
+This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the OmniSharp C# extension, and update both SqlClient and ScriptDom packages.
 
 - Install the [OmniSharp C# extension for VS Code](https://github.com/OmniSharp/omnisharp-vscode)
-- Add the SqlClient and ScriptDom packages. At a Terminal in VS Code:
+- Add the System.Data.SqlClient and Microsoft.SqlServer.TransactSql.ScriptDom packages. At a Terminal in VS Code:
   - `dotnet add package System.Data.SqlClient --version 4.8.2`
   - `dotnet add package Microsoft.SqlServer.TransactSql.ScriptDom --version 150.4573.2`
-  - _Note that when you read this there may be newer versions of these packages available._
+  - Note that when you read this there may be newer versions of these packages available. Check [here for SqlClient](https://www.nuget.org/packages/System.Data.SqlClient/) and [here for ScriptDom](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/).
 - Create the supporting database by running **ParamParser_Central.sql** (this creates a database called ParamParser_Central)
 - Update the code to use your connection string particulars
 - Build **ParamParser.cs** as part of a new console application
   - The shortest path is to build a Hello World console app following [these steps](https://docs.microsoft.com/en-us/dotnet/core/tutorials/with-visual-studio-code) and then just replace the code in **Program.cs** with the code from **ParamParser.cs**
 - Test it out:
-  - To test the demo I've provided, run **ParamParser_Demo.sql** (this creates a database called ParamParser_Demo), the code references this as the target database by default
+  - To test the demo provided here, run **ParamParser_Demo.sql** (this creates a database called ParamParser_Demo), the code references this as the target database by default
   - To test against your own database, just pass the target database in as the first argument (`ParamParser "targetDB"`) or change the `targetDB` variable in the code at runtime
   - In either case, inspect the contents of ParamParser_Central.dbo.ModuleParams after running one or more times
 
