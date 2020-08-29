@@ -51,7 +51,7 @@ The resulting code is being shared here, and this is what it was able to parse o
 
 ### Dependencies / How to Start
 
-This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the Powershell extension, brew, and update the ScriptDom package to the latest version.
+This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the Powershell extension, brew, and update the ScriptDom package to the latest version. If you're on Windows, you probably won't need any of this help, but please reach out if you have issues. 
 
 - Install the [Powershell extension for VS Code](https://code.visualstudio.com/docs/languages/powershell)
 - Install brew from [brew.sh](https://brew.sh/)
