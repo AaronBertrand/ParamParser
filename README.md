@@ -47,7 +47,7 @@ After answering a [recent question on Stack Overflow](https://stackoverflow.com/
 
 The resulting code is being shared here, and this is what it was able to parse out of that small monstrosity:
 
-![Example result](https://sqlblog.org/wp-content/uploads/2020/08/param-parser-example.png)
+![Example result](https://sqlblog.org/wp-content/uploads/2020/08/param-parser-output.png)
 
 ### Dependencies / How to Start
 
