@@ -63,6 +63,20 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
   - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
     - If you want to point elsewhere, update the `Add-Type` reference on line to point to that file location
 
+### What does it do
+
+- for now, just takes a script (call at the end with lots of examples) and outputs a DataTable to the console
+- this now handles multiple batches, so sp_whoisactive, no problem
+- but it won't parse CREATE <object> from inside dynamic SQL, and any script in the batch has to successfully parse or the parser will barf
+
 ### Future Enhancements
 
-- Command line arguments to support multiple explicitly named databases or all (user) database flags
+- need to make it so it takes a source as an argument
+  - source can be a .sql file, folder, or database
+  - for a folder, concat all the files with GO between each 
+  - (maybe limit it to specific file types so we're not concatenting cat pictures)
+  - for a database, same, concat all definitions together with GO between each
+- need to also take output as a target
+  - output to console
+  - out-csv, out-xml, out-json, to pipeline or to a file
+  - pass credentials to save the DataTable to a database (would need database, procedure, parameter name)
