@@ -68,7 +68,7 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
 For now, just takes a script (call at the end with lots of examples) and outputs a DataTable to the console
 
 - this now handles multiple batches, so sp_whoisactive, no problem
-  - it won't parse CREATE <object> from inside dynamic SQL
+- it won't parse CREATE <object> from inside dynamic SQL
 
 Any script in the batch has to successfully parse or the parser will barf
 
