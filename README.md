@@ -66,6 +66,7 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
 ### What does it do
 
 For now, just takes a script (call at the end with lots of examples) and outputs a DataTable to the console
+
 - this now handles multiple batches, so sp_whoisactive, no problem
   - it won't parse CREATE <object> from inside dynamic SQL
 
@@ -73,12 +74,15 @@ Any script in the batch has to successfully parse or the parser will barf
 
 ### Future Enhancements
 
+Basically, more sources, more targets
+
 - need to make it so it takes a source as an argument
-  - source can be a .sql file, folder, or database
-  - for a folder, concat all the files with GO between each 
-  - (maybe limit it to specific file types so we're not concatenting cat pictures)
-  - for a database, same, concat all definitions together with GO between each
+    - source can be a .sql file, folder, or database
+    - for a folder, concat all the files with GO between each 
+    - (maybe limit it to specific file types so we're not concatenting cat pictures)
+    - for a database, same, concat all definitions together with GO between each
+
 - need to also take output as a target
-  - output to console
-  - out-csv, out-xml, out-json, to pipeline or to a file
-  - pass credentials to save the DataTable to a database (would need database, procedure, parameter name)
+    - output to console
+    - out-csv, out-xml, out-json, to pipeline or to a file
+    - pass credentials to save the DataTable to a database (would need database, procedure, parameter name)
