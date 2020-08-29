@@ -65,12 +65,7 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
 
 ### What does it do
 
-For now, just takes a script (call at the end with lots of examples) and outputs a DataTable to the console
-
-- this now handles multiple batches, so sp_whoisactive, no problem
-- it won't parse CREATE <object> from inside dynamic SQL
-
-Any script in the batch has to successfully parse or the parser will barf
+For now, just takes a script (call at the end with lots of examples) and outputs a DataTable to the console. Now handles multiple batches, so sp_whoisactive, no problem. But it won't parse CREATE <object> from inside dynamic SQL, and it won't handle any script that SSMS can't parse.
 
 ### Future Enhancements
 
@@ -86,3 +81,5 @@ Basically, more sources, more targets
     - output to console
     - out-csv, out-xml, out-json, to pipeline or to a file
     - pass credentials to save the DataTable to a database (would need database, procedure, parameter name)
+    
+- split out demos
