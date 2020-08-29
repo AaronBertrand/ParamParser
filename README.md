@@ -51,12 +51,12 @@ The resulting code is being shared here, and this is what it was able to parse o
 
 ### Dependencies / How to Start
 
-This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the Powershell extension, brew, and update both SqlClient and ScriptDom packages.
+This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the Powershell extension, brew, and update the ScriptDom package to the latest version.
 
 - Install the [Powershell extension for VS Code](https://code.visualstudio.com/docs/languages/powershell)
 - Install brew from [brew.sh](https://brew.sh/)
   - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"`
-- Update Powershell ([Microsoft instructions](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-6))
+- Install Powershell ([Microsoft instructions](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-6))
   - `brew cask install powershell`
 - Update ScriptDom
   - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/))
