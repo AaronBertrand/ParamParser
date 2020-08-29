@@ -1,6 +1,6 @@
 # ParamParser
 
-You're here because you want to know the default values defined for your stored procedures, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple C# console app that parses parameter default values and stores them in a table.
+You're here because you want to know the default values defined for your stored procedures, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple Powershell script that parses parameter information out of modules stored in a database, database scripts stored in files, or raw scripts inline.
 
 ### Background
 
@@ -43,7 +43,7 @@ CREATE PROCEDURE dbo.some_procedure
 
 My first action on discovering that procedure would be to have the developer fix it. Barring that, I'd love to see T-SQL that will reliably parse it, returning only the input parameters and their default values, and not the local variables. If you don't believe me, give it a try. **It's hard.**
 
-After answering a [recent question on Stack Overflow](https://stackoverflow.com/q/63581531/61305) about this, and tracing my steps back ~15 years, I came across [this great post](https://michaeljswart.com/2014/04/removing-comments-from-sql/) by Michael Swart. In that post, Michael uses the ScriptDom's [TSqlParser](https://docs.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.transactsql.scriptdom.tsqlparser) to remove both single-line and multi-line comments from a block of T-SQL. This gave me all the motivation I needed to take this a few steps further.
+After answering a [recent question on Stack Overflow](https://stackoverflow.com/q/63581531/61305) about this, and tracing my steps back ~15 years, I came across [this great post](https://michaeljswart.com/2014/04/removing-comments-from-sql/) by Michael Swart. In that post, Michael uses the ScriptDom's [TSqlParser](https://docs.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.transactsql.scriptdom.tsqlparser) to remove both single-line and multi-line comments from a block of T-SQL. This gave me all the motivation I needed to take this a few steps further; I started with C#, but quickly determined that Powershell would be more flexible, more robust.
 
 The resulting code is being shared here, and this is what it was able to parse out of that small monstrosity:
 
@@ -51,25 +51,18 @@ The resulting code is being shared here, and this is what it was able to parse o
 
 ### Dependencies / How to Start
 
-This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the OmniSharp C# extension, and update both SqlClient and ScriptDom packages.
+This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the Powershell extension, brew, and update both SqlClient and ScriptDom packages.
 
-- Install the [OmniSharp C# extension for VS Code](https://github.com/OmniSharp/omnisharp-vscode)
-- Add the System.Data.SqlClient and Microsoft.SqlServer.TransactSql.ScriptDom packages; at a Terminal in VS Code:
-  - `dotnet add package System.Data.SqlClient --version 4.8.2`
-  - `dotnet add package Microsoft.SqlServer.TransactSql.ScriptDom --version 150.4573.2`
-  - Note that when you read this there may be newer versions of these packages available; check [here for SqlClient](https://www.nuget.org/packages/System.Data.SqlClient/) and [here for ScriptDom](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/)
-- Create the supporting database by running **ParamParser_Central.sql** (this creates a database called ParamParser_Central)
-- Update the code to use your connection string particulars
-- Build **ParamParser.cs** as part of a new console application
-  - The shortest path is to build a Hello World console app following [these steps](https://docs.microsoft.com/en-us/dotnet/core/tutorials/with-visual-studio-code) and then just replace the code in **Program.cs** with the code from **ParamParser.cs**
-- Test it out:
-  - To test the demo provided here, run **ParamParser_Demo.sql** (this creates a database called ParamParser_Demo), the code references this as the target database by default
-  - To test against your own database, just pass the target database in as the first argument (`ParamParser "targetDB"`) or change the `targetDB` variable in the code at runtime
-  - In either case, inspect the contents of ParamParser_Central.dbo.ModuleParams after running one or more times
+- Install the [Powershell extension for VS Code](https://code.visualstudio.com/docs/languages/powershell)
+- Install brew from [brew.sh](https://brew.sh/)
+  - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"`
+- Update Powershell ([Microsoft instructions](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-6))
+  - `brew cask install powershell`
+- Update ScriptDom
+  - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/))
+  - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
+    - If you want to point elsewhere, update the `Add-Type` reference on line to point to that file location
 
 ### Future Enhancements
 
-- Break database objects into separate files
-- More robust logic in the DatabaseSupport.sql script to handle changes
 - Command line arguments to support multiple explicitly named databases or all (user) database flags
-- Connection info off in appconfig / JSON instead of within the app code
