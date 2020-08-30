@@ -46,8 +46,7 @@ My first action on discovering that procedure would be to have the developer fix
 After answering a [recent question on Stack Overflow](https://stackoverflow.com/q/63581531/61305) about this, and tracing my steps back ~15 years, I came across [this great post](https://michaeljswart.com/2014/04/removing-comments-from-sql/) by Michael Swart. In that post, Michael uses the ScriptDom's [TSqlParser](https://docs.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.transactsql.scriptdom.tsqlparser) to remove both single-line and multi-line comments from a block of T-SQL. This gave me all the motivation I needed to take this a few steps further; I started with C#, but quickly determined that Powershell would be more flexible, more robust.
 
 The resulting code is being shared here, and this is what it was able to parse out of that small monstrosity:
-
-![Example result](https://sqlblog.org/wp-content/uploads/2020/08/param-parser-output.png)
+#TODO add screen shot
 
 ### Dependencies / How to Start
 
