@@ -101,8 +101,9 @@ Function Get-ParsedParams ($script)
     [void]$global:dt.Columns.Add("IsOutput");
     [void]$global:dt.Columns.Add("IsReadOnly"); 
     
-    $global:CreateStatements = @("CreateOrAlterFunctionStatement", "CreateOrAlterProcedureStatement", `
-    "CreateFunctionStatement", "CreateProcedureStatement", "AlterFunctionStatement", "AlterProcedureStatement");
+    $global:CreateStatements = @("CreateOrAlterFunctionStatement", "CreateOrAlterProcedureStatement", 
+                                 "CreateFunctionStatement", "CreateProcedureStatement", 
+                                 "AlterFunctionStatement", "AlterProcedureStatement");
     $visitor = [Visitor]::new();
     $frag.Accept($visitor);
 
@@ -175,7 +176,7 @@ CREATE OR ALTER PROCEDURE dbo.p3
   @g int OUTPUT,
   @h dbo.tabletype READONLY,
   /* @not_a_param int = 5 AS BEGIN */
-  @i sysname = N'fl读写汉oo🤦‍♂️fl学中文oo',
+  @i sysname = N'汉🤦‍学中',
   @j xml = N'<foo></bar>',
   @k dbo.[Email Address] = 'foo@bar.com',
   @l geography,
@@ -189,7 +190,7 @@ CREATE OR ALTER PROCEDURE dbo.p3
   @s float ( 53 ) = 54,
   @t float(25) = 75, -- becomes float(53) -- metadata problem, not me
   @u float(23) = 90, -- becomes real    -- again, metadata problem, not me
-  @读🤦‍♂️文 decimal(12,2) = 16.54,
+  @读🤦‍文 decimal(12,2) = 16.54,
   @w real = 5.678  
   /* @not_a_param int = 5 AS BEGIN */
 )
