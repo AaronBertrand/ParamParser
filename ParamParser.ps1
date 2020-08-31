@@ -79,11 +79,23 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 
 Function Get-ParsedParams ($script) 
 {
-    Add-Type -Path "Microsoft.SqlServer.TransactSql.ScriptDom.dll"
-    $parser = New-Object Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser($true)
-    $err = New-Object System.Collections.Generic.List[Microsoft.SqlServer.TransactSql.ScriptDom.ParseError]
-    $stringReader = New-Object System.IO.StringReader($script)
-    $frag = $parser.Parse($stringReader, [ref]$err)
+
+    try { Add-Type -Path "Microsoft.SqlServer.TransactSql.ScriptDom.dll"; }
+    catch {
+        $sb = [System.Text.StringBuilder]::New()
+        $msg = $sb.AppendLine('Download sqlpackage 18.5.1 or better from:').
+            Append([System.Environment]::NewLine).
+            AppendLine('  https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download').
+            Append([System.Environment]::NewLine).
+            AppendLine('Extract Microsoft.SqlServer.TransactSql.ScriptDom.dll and place').
+            AppendLine('it in the same folder as this file (or update -Path above):')
+        $sb.ToString();
+        Write-Host $msg -ForegroundColor Magenta;
+    }
+    $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
+    $err = [System.Collections.Generic.List[Microsoft.SqlServer.TransactSql.ScriptDom.ParseError]]::New();
+    $frag = $parser.Parse([System.IO.StringReader]::New($script), [ref]$err);
+ 
     if($err.Count -gt 0) 
     {
         throw "$($err.Count) parsing error(s): $(($err | ConvertTo-Json))"
@@ -145,7 +157,9 @@ CREATE PROCEDURE dbo.some_procedure
   DECLARE @c int = 5;
   SET @c = 6;
 GO
+"@
 
+$sd2 = @"
 CREATE PROCEDURE [dbo].what
 (
 @p1 AS [int] = /* 1 */ 1 READONLY,
