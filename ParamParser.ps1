@@ -1,21 +1,27 @@
 <#
 - need to make it so it takes a source as an argument
-  - source can be a .sql file, folder, or database
-  - for a folder, concat all the files with GO between each 
-  - (maybe limit it to specific file types so we're not concatenting cat pictures)
-  - for a database, same, concat all definitions together with GO between each
+  - source can be a .sql file, array of files, folder, array of folders, or a database, array of databases, all user databases
+    - for one or more folders, concat all the files with GO between each 
+    - (maybe limit it to specific file types so we're not concatenting cat pictures)
+    - for a database, same, concat all definitions together with GO between each
+    - but inject metadata so output can reflect source 
+      - (say if two different files with the same name contain procedures with same name but different interface)
 
-- for now, just takes a script (call at the end with lots of examples)
-- and outputs a DataTable to the console.
+- for now, just:
+  - takes a script (call at the end with lots of examples)
+  - and outputs a DataTable to the console.
 
-- need to also take output as a target
+- need to also take an input argument to define output target
   - output to console
-  - out-csv, out-xml, out-json, to pipeline or to a file
+  - out-csv, out-xml, out-json, to pipeline, or to a file
   - pass credentials to save the DataTable to a database
-    - would need database, procedure, parameter name
+    - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
 
 - this now handles multiple batches, so sp_whoisactive, no problem
   - but it won't parse CREATE PROCEDURE from inside dynamic SQL
+  
+  # Visitor code lifted from Dan Guzman
+  # https://www.dbdelta.com/microsoft-sql-server-script-dom/
 #>
 
 
