@@ -5,11 +5,11 @@
     - (maybe limit it to specific file types so we're not concatenting cat pictures)
     - for a database, same, concat all definitions together with GO between each
     - but inject metadata so output can reflect source 
-      - (say if two different files with the same name contain procedures with same name but different interface)
+      - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
 
 - for now, just:
-  - takes a script (call at the end with lots of examples)
-  - and outputs a DataTable to the console.
+  - takes a raw script pasted in (call at the end with lots of examples)
+  - and outputs a PSCustom object to the console usng Write-Output.
 
 - need to also take an input argument to define output target
   - output to console
@@ -24,147 +24,215 @@
   # https://www.dbdelta.com/microsoft-sql-server-script-dom/
 #>
 
-
 class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor 
 {
-    [void]Visit ([Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragment] $frag)
+    $Results = [System.Collections.ArrayList]@();
+
+    $ProcedureStatements = @("CreateOrAlterProcedureStatement",
+        "CreateProcedureStatement", "AlterProcedureStatement");
+
+    $FunctionStatements = @("CreateOrAlterFunctionStatement",
+        "CreateFunctionStatement", "AlterFunctionStatement");
+
+    $ModuleTokenTypes = (@("ProcedureParameter", "ProcedureReference"));
+
+    $CommentTokenTypes = (@("MultilineComment", "SingleLineComment"));
+
+    [PSCustomObject]GetResultObject ([string]$StatementType) {
+      return ([PSCustomObject]@{
+          Id = $this.Counter
+          ModuleId = $this.ModuleId
+          ObjectName = $this.ObjectName
+          ParamId = $this.ParamId
+          StatementType = $StatementType
+          DataType = [string]::Empty
+          DefaultValue = [string]::Empty
+          IsOutput = $false
+          IsReadOnly = $false
+          ParamName = [string]::Empty
+      })
+    }
+
+    hidden [int]$Counter = 0;
+    hidden [int]$ModuleId = 0;
+    hidden [int]$ParamId = 0;
+
+    [void]Visit ([Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragment] $fragment)
     {
-        $fragType = $frag.GetType().Name;
-        if ($fragType -in ("ProcedureParameter", "SchemaObjectName") -or $global:CreateStatements.Contains($fragType))
+        $fragmentType = $fragment.GetType().Name;
+
+        if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements + $this.ModuleTokenTypes))
         {
-            $seenEquals = $false;
-            $dataTypeOrName = "";
-            $defaultValue = "";
-            $isOutput = 0;
-            $isReadOnly = 0;
-            if ($fragType -eq "ProcedureParameter" -or ($frag.FirstTokenIndex -lt $frag.LastTokenIndex))       
-            {   
-                $r = $global:dt.NewRow();
-                for ($i = $frag.FirstTokenIndex; $i -le $frag.LastTokenIndex; $i++)
-                { 
-                    $token = $frag.ScriptTokenStream[$i];
-                    if ($token.TokenType -eq "Variable" -and $fragType -eq "ProcedureParameter") { $r["ParamName"] = $token.Text; }
-                    if ($token.TokenType -eq "EqualsSign") { $seenEquals = $true; }
-                    if (!$seenEquals -and $token.TokenType -notin ("Variable","WhiteSpace","MultiLineComment","SingleLineComment","As"))
-                    {
-                        if     ($token.TokenType -eq "Identifier" -and $token.Text.ToUpper() -eq "Output") { $isOutput = 1; }   
-                        elseif ($token.TokenType -eq "Identifier" -and $token.Text.ToUpper() -eq "ReadOnly") { $isReadOnly = 1; }
-                        else { $dataTypeOrName += $token.Text } # + ", $($token.Type), $($frag.FirstTokenIndex), $($frag.LastTokenIndex)"; }
-                    }
-                    if ($seenEquals -and $token.TokenType -notin ("EqualsSign","Output","ReadOnly","MultiLineComment","SingleLineComment","As"))
-                    {
-                        if     ($token.TokenType -eq "Identifier" -and $token.Text.ToUpper() -eq "Output") { $isOutput = 1; }   
-                        elseif ($token.TokenType -eq "Identifier" -and $token.Text.ToUpper() -eq "ReadOnly") { $isReadOnly = 1; }
-                        else { $defaultValue += $token.Text }
-                    }
-                }
-                if ($fragType -eq "ProcedureParameter")
-                { 
-                    $r["DataType"]     = $dataTypeOrName;
-                    $r["DefaultValue"] = $defaultValue.TrimStart();
-                    $r["IsOutput"]     = $isOutput;
-                    $r["isReadOnly"]   = $isReadOnly;
-                }
-                if ($fragType -eq "SchemaObjectName")
-                {
-                    $r["ObjectName"]   = $dataTypeOrName;
-                }
-                $r["TokenType"] = $fragType;
-                $global:dt.Rows.Add($r);
+            # if body of procedure or function, increase the module # and reset param count
+            if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements))
+            {
+                $this.ModuleId++;
+                $this.ParamId = 0;
             }
+
+            $result = $this.GetResultObject($fragmentType);
+
+            # for any parameter or procedure name, need to loop through all the tokens
+            # in the fragment to build up the name, data type, default, etc.
+            if ($fragmentType -iin $this.ModuleTokenTypes)
+            {
+                $seenEquals = $false;
+                $isOutputOrReadOnly = $false;
+
+                for ($i = $fragment.FirstTokenIndex; $i -le $fragment.LastTokenIndex; $i++)
+                {
+                    $token = $fragment.ScriptTokenStream[$i];
+                    if ($token.TokenType -notin (@("As") + $this.CommentTokenTypes))
+                    {
+                        if ($fragmentType -eq "ProcedureParameter")
+                        {
+                            if ($token.TokenType -eq "Identifier" -and ($token.Text -iin ("OUT", "OUTPUT", "READONLY")))
+                            {
+                                $isOutputOrReadOnly = $true;
+                                if ($token.Text -ieq "READONLY")
+                                {
+                                    $result.IsReadOnly = $true;
+                                }
+                                else 
+                                {
+                                    $result.IsOutput = $true;
+                                }
+                            }
+
+                            if (!$seenEquals)
+                            {
+                                if ($token.TokenType -eq "EqualsSign") 
+                                { 
+                                    $seenEquals = $true; 
+                                }
+                                else 
+                                { 
+                                    if ($token.TokenType -eq "Variable") 
+                                    {
+                                      $this.ParamId++;
+                                      $result.ParamName = $token.Text; 
+                                    }
+                                    else
+                                    {
+                                        if (!$isOutputOrReadOnly)
+                                        {
+                                            $result.DataType += $token.Text; 
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            { 
+                                if ($token.TokenType -ne "EqualsSign" -and !$isOutputOrReadOnly)
+                                {
+                                    $result.DefaultValue += $token.Text;
+                                }
+                            }
+                        }
+                        else 
+                        {
+                            $result.ObjectName += $token.Text.Trim(); 
+                        }
+                    }
+                }
+            }
+
+            # tedious: need to loop through function to build the object name
+            # no FunctionReference but there will be multiple identifiers
+            if ($fragmentType -iin ($this.FunctionStatements)) 
+            {
+                $seenObject = $false;
+                $seenEndOfFirstObject = $false;
+                for ($i = $fragment.FirstTokenIndex; $i -le $fragment.LastTokenIndex; $i++)
+                {
+                    $token = $fragment.ScriptTokenStream[$i];
+                    if ($token.TokenType -notin (@("WhiteSpace") + $this.CommentTokenTypes))
+                    {
+                      if ($seenObject -and $token.TokenType -notin ("Dot","Identifier"))
+                        {
+                            $seenEndOfFirstObject = $true;
+                        }
+                        if ($token.TokenType -in ("Dot", "Identifier") -and !$seenEndOfFirstObject)
+                        {
+                            $seenObject = $true;
+                            $result.ObjectName += $token.Text.Trim();
+                        }
+                    }    
+                } 
+            }            
+            $result.DataType = $result.DataType.TrimStart();
+            $result.DefaultValue = $result.DefaultValue.TrimStart();
+            $this.Results.Add($result);
+            $this.Counter++;
         }
     }
 }
 
-
-Function Get-ParsedParams ($script) 
+Function Get-ParsedParams ($script)
 {
 
-    try { Add-Type -Path "Microsoft.SqlServer.TransactSql.ScriptDom.dll"; }
-    catch {
-        $sb = [System.Text.StringBuilder]::New()
-        $msg = $sb.AppendLine('Download sqlpackage 18.5.1 or better from:').
-            Append([System.Environment]::NewLine).
-            AppendLine('  https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download').
-            Append([System.Environment]::NewLine).
-            AppendLine('Extract Microsoft.SqlServer.TransactSql.ScriptDom.dll and place').
-            AppendLine('it in the same folder as this file (or update -Path above):')
-        $sb.ToString();
-        Write-Host $msg -ForegroundColor Magenta;
-    }
-    $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
-    $err = [System.Collections.Generic.List[Microsoft.SqlServer.TransactSql.ScriptDom.ParseError]]::New();
-    $frag = $parser.Parse([System.IO.StringReader]::New($script), [ref]$err);
- 
-    if($err.Count -gt 0) 
-    {
-        throw "$($err.Count) parsing error(s): $(($err | ConvertTo-Json))"
-    }
-    $global:dt = New-Object System.Data.DataTable;
-    $id = New-Object System.Data.DataColumn RowID,([int]);
-    $id.AutoIncrement = $true;
-    $id.AutoIncrementSeed = 1;
-    $global:dt.Columns.Add($id);
-    [void]$global:dt.Columns.Add("TokenType");
-    [void]$global:dt.Columns.Add("ObjectName");
-    [void]$global:dt.Columns.Add("ParamName");
-    [void]$global:dt.Columns.Add("DataType");
-    [void]$global:dt.Columns.Add("DefaultValue");
-    [void]$global:dt.Columns.Add("IsOutput");
-    [void]$global:dt.Columns.Add("IsReadOnly"); 
-    
-    $global:CreateStatements = @("CreateOrAlterFunctionStatement", "CreateOrAlterProcedureStatement", 
-                                 "CreateFunctionStatement", "CreateProcedureStatement", 
-                                 "AlterFunctionStatement", "AlterProcedureStatement");
-    $visitor = [Visitor]::new();
-    $frag.Accept($visitor);
+  try 
+  {
+    Add-Type -Path "$($PSScriptRoot)/Microsoft.SqlServer.TransactSql.ScriptDom.dll";
+  }
+  catch 
+  {
+    Write-Host "Please update ScriptDom.dll and verify the path." -ForegroundColor Blue;  
+  }
+
+  $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
+  $errors = [System.Collections.Generic.List[Microsoft.SqlServer.TransactSql.ScriptDom.ParseError]]::New();
+  $fragment = $parser.Parse([System.IO.StringReader]::New($script), [ref]$errors);
 
 
-    for ($i = 1; $i -le $global:dt.Rows.Count; $i++)
-    {
-        $thisToken = $global:dt.Rows[$i].TokenType;
-        $prevToken = $global:dt.Rows[$i-1].TokenType;
+  if ($errors.Count -gt 0) {
+    throw "$($errors.Count) parsing error(s): $(($errors | ConvertTo-Json))";
+  }
 
-        # delete any row that has a SchemaObjectName but isn't the name of the procedure
-        # because this gets pulled out in a visit even if it's part of a data type declaration (e.g. @param dbo.UserType)
-        # also flatten the first two rows for any object - one is type of statement, two is object name
-        if ($thisToken -eq "SchemaObjectName")
-        {
-            if (!$global:CreateStatements.Contains($prevToken))
-            {
-                $global:dt.Rows[$i].Delete();
-            }
-            if ($global:CreateStatements.Contains($prevToken))
-            {  
-                $global:dt.Rows[$i].TokenType = $prevToken;
-                $global:dt.Rows[$i-1].Delete();
-            }
-        }
-        $global:dt.AcceptChanges();
-    }
-    $global:dt | Select-Object | Sort-Object RowID | Format-Table;
+
+  $visitor = [Visitor]::New();
+  $fragment.Accept($visitor);
+
+  # collapse rows
+  $idsToExclude = @();
+  for ($i = 1; $i -le $visitor.Results.Count; $i++) 
+  {
+      $thisObject = $visitor.Results[$i];
+      $prevObject = $visitor.Results[$i-1];
+
+      if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
+          $prevObject.ModuleId -eq $thisObject.ModuleId)
+      {
+        $prevObject.ObjectName = $thisObject.ObjectName;
+        $idsToExclude += ($i);
+      }
+  }
+  Write-Output ($visitor.Results | Where-Object {$_.Id -notin $idsToExclude});
 }
 
 $script = @"
-/* AS BEGIN , @a int = 7, comments can appear anywhere */
-CREATE PROCEDURE dbo.some_procedure 
-  -- AS BEGIN, @a int = 7 'blat' AS =
-  /* AS BEGIN, @a int = 7 'blat' AS = */
-  @a AS /* comment here because -- chaos */ int = 5,
-  @b AS varchar(64) /* = 'AS = /* BEGIN @a, int = 7 */ ''blat''' */ 
-  AS
-  -- @b int = 72,
-  DECLARE @c int = 5;
-  SET @c = 6;
+CREATE PROCEDURE dbo.do_the_thing
+  @foo dbo.ya = /*what */ 5 READONLY,
+  @bar int = 32 OUTPUT
+AS
+  SELECT 1;
 GO
-"@
-
-$sd2 = @"
+CREATE OR ALTER FUNCTION dbo./* yo */x--ya
+(@a int /*dfdf*/ = --
+2) RETURNS int AS BEGIN
+  RETURN (SELECT @a + 1);
+END
+GO
+CREATE FUNCTION dbo.do_less_than_nothing() 
+RETURNS int AS BEGIN RETURN 1; END;
+GO
+CREATE PROCEDURE dbo.do_nothing AS PRINT 1;
+GO
 CREATE PROCEDURE [dbo].what
 (
 @p1 AS [int] = /* 1 */ 1 READONLY,
 @p2 datetime = getdate OUTPUT,-- comment
-@p3 dbo.tabletype = {t '5:45'} READONLY
+@p3 dbo.tabletype = {t '2020-02-01 13:15:17'} READONLY
 )
 AS SELECT 5
 GO
@@ -177,7 +245,6 @@ BEGIN
   RETURN ('hi');
 END
 GO
-
 CREATE OR ALTER PROCEDURE dbo.p3
 (
   @a int = 5,
@@ -216,6 +283,16 @@ AS
   PRINT 'BEGIN';
   END
 GO
+/* AS BEGIN , @a int = 7, comments can appear anywhere */
+CREATE PROCEDURE dbo.some_procedure 
+    -- AS BEGIN, @a int = 7 'blat' AS =
+    /* AS BEGIN, @a int = 7 'blat' AS = */
+    @a AS /* comment here because -- chaos */ int = 5,
+    @b AS varchar(64) = 'AS = /* BEGIN @a, int = 7 */ ''blat'''
+  AS
+    -- @b int = 72,
+    DECLARE @c int = 5;
+    SET @c = 6;
 "@
 
 Get-ParsedParams -script $script;
