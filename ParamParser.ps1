@@ -6,17 +6,14 @@
     - for a database, same, concat all definitions together with GO between each
     - but inject metadata so output can reflect source 
       - (say if two different files with the same name contain procedures with same name but different interface)
-
 - for now, just:
   - takes a script (call at the end with lots of examples)
   - and outputs a DataTable to the console.
-
 - need to also take an input argument to define output target
   - output to console
   - out-csv, out-xml, out-json, to pipeline, or to a file
   - pass credentials to save the DataTable to a database
     - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
-
 - this now handles multiple batches, so sp_whoisactive, no problem
   - but it won't parse CREATE PROCEDURE from inside dynamic SQL
   
@@ -177,7 +174,6 @@ BEGIN
   RETURN ('hi');
 END
 GO
-
 CREATE OR ALTER PROCEDURE dbo.p3
 (
   @a int = 5,
@@ -218,4 +214,4 @@ AS
 GO
 "@
 
-Get-ParsedParams -script $script;
+Get-ParsedParams -script $sd2
