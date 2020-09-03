@@ -58,6 +58,9 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
   - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"`
 - Install Powershell ([Microsoft instructions](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-6))
   - `brew cask install powershell`
+  - If `pwsh` is already available, make sure you have the latest version:
+    - `brew update`
+    - `brew cask upgrade powershell`
 - Update ScriptDom
   - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/))
   - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
