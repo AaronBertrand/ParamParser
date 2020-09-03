@@ -10,7 +10,6 @@ Since SQL Server first supported parameters to stored procedures and functions, 
 - [x] data type
 - [x] ordinal position
 - [x] direction (input / output)
-- [x] nullable
 - [x] read only
 - [ ] ~whether it has a default value~
 - [ ] ~the actual default value~
