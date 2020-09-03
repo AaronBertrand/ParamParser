@@ -25,7 +25,7 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 
 Function Get-ParsedParams ($script) 
 {
-    try { Add-Type -Path "Microsoft.SqlServer.TransactSql.ScriptDom.dll"; }
+    try { Add-Type -Path "$($PSScriptRoot)/Microsoft.SqlServer.TransactSql.ScriptDom.dll"; }
     catch {
         $sb = [System.Text.StringBuilder]::New()
         $msg = $sb.AppendLine('Download sqlpackage 18.5.1 or better from:').
