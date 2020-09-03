@@ -47,7 +47,7 @@ After answering a [recent question on Stack Overflow](https://stackoverflow.com/
 
 The resulting code is being shared here, and this is what it was able to parse out of that small monstrosity:
 
-![](https://sqlblog.org/wp-content/uploads/2020/08/param-parser-basic-output.png)
+![](https://sqlblog.org/wp-content/uploads/2020/09/param-parser-output-0.96.png)
 
 ### Dependencies / How to Start
 
@@ -58,31 +58,49 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
   - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"`
 - Install Powershell ([Microsoft instructions](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-6))
   - `brew cask install powershell`
-  - If `pwsh` is already available, make sure you have the latest version:
+  - If pwsh is already available, make sure you have the latest version:
     - `brew update`
     - `brew cask upgrade powershell`
 - Update ScriptDom
   - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/))
   - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
-    - If you want to point elsewhere, update the `Add-Type` reference to point to that file location
+    - If you want to point elsewhere, update the `Add-Type` reference to point to that file location instead of `$($PSScriptRoot)`.
 
 ### What does it do
 
-For now, just takes a script (call at the end with lots of examples) and outputs a DataTable to the console. Now handles multiple batches, so sp_whoisactive, no problem. But it won't parse CREATE <object> from inside dynamic SQL, and it won't handle any script that SSMS can't parse.
+For now, just takes a script (call at the end with lots of examples) and outputs a `PSObject` to the console using `Write-Output`. Now handles multiple batches, so sp_whoisactive, no problem. But it won't parse CREATE <object> from inside dynamic SQL, and it won't handle any script that SSMS can't parse.
+
+### Shout-Outs
+
+Already a big list of people who have helped or inspired:
+
+- [Will White](https://github.com/willwhite1)
+- [Michael Swart](https://michaeljswart.com/)
+- [Dan Guzman](https://dbdelta.com)
+- [Andy Mallon](https://am2.co)
+- [Melissa Connors](https://www.sentryone.com/blog/author/melissa-connors)
+- [Arvind Shyamsundar](https://github.com/arvindshmicrosoft)
 
 ### Future Enhancements
 
-Basically, more sources, more targets
+Basically, more sources, more targets, more options.
 
 - need to make it so it takes a source as an argument
-    - source can be a .sql file, folder, or database
-    - for a folder, concat all the files with GO between each 
+  - source can be a .sql file, array of files, folder, array of folders, or a database, array of databases, all user databases
+    - for one or more folders, concat all the files with GO between each 
     - (maybe limit it to specific file types so we're not concatenting cat pictures)
     - for a database, same, concat all definitions together with GO between each
-
-- need to also take output as a target
-    - output to console
-    - out-csv, out-xml, out-json, to pipeline or to a file
-    - pass credentials to save the DataTable to a database (would need database, procedure, parameter name)
-    
-- split out demos
+    - but inject metadata so output can reflect source 
+      - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
+      
+- should also accept path to ScriptDom.dll as an optional argument
+- for now, just:
+  - takes a raw script pasted in (call at the end with lots of examples)
+  - and outputs a PSCustom object to the console usng Write-Output.
+- need to also take an input argument to define output target
+  - output to console
+  - out-csv, out-xml, out-json, to pipeline, or to a file
+  - pass credentials to save the DataTable to a database
+    - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
+- this now handles multiple batches, so sp_whoisactive, no problem
+  - but it won't parse CREATE PROCEDURE from inside dynamic SQL
