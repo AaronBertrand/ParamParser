@@ -67,11 +67,32 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
 
 ### What does it do
 
-For now, just takes a script (call at the end with lots of examples) and outputs a `PSCustomObject` to the console using `Write-Output`. Now handles multiple batches, so sp_whoisactive, no problem. But it won't parse CREATE <object> from inside dynamic SQL, and it won't handle any script that SSMS can't parse.
+For now, it just takes a script (call at the end with lots of examples) and outputs a `PSCustomObject` to the console using `Write-Output`. I showed an abbreviated sample above, but the elements in the output are, perhaps not in the most logical order at present:
+
+- **`Id`**: 
+  - Simply a row number incremented for every fragment visited.
+- **`ModuleId`**: 
+  - A counter that increments for every new procedure or function body we encounter.
+- **`ObjectName`**: 
+  - The name of the object.
+- **`ParamId`**: 
+  - A counter that increments for every new parameter we encounter inside a module. (Currently 0-based but this should be 1-based.)
+- **`StatementType`**: 
+  - Whether it's create/alter/create or alter | procedure/function. Inside the body it's going to show `ProcedureParameter` but this should arguably show blank.
+- **`DataType`**: 
+  - Properly defined data type _as written_ - e.g. this will show `float(23)` if that's what the module defines, even if that isn't the data type stored in `sys.parameters`.
+- **`DefaultValue`**: 
+  - The literal text supplied by default, whether it's a string or numeric literal, an ODBC literal, or an identifier.
+- **`IsOutput`**: 
+  - Whether the parameter is defined as `OUT`/`OUTPUT`.
+- **`IsReadOnly`**: 
+  - Whether the parameter is read only (only valid for table-valued parameters).
+- **`ParamName`**: 
+  - The name of the parameter.
 
 ### Shout-Outs
 
-Already a big list of people who have helped or inspired:
+I certainly can't take much credit here; there's already a big, growing list of people who have helped or inspired:
 
 - [Will White](https://github.com/willwhite1)
 - [Michael Swart](https://michaeljswart.com/)
@@ -91,12 +112,12 @@ Basically, more sources, more targets, more options.
     - for a database, same, concat all definitions together with GO between each
     - but inject metadata so output can reflect source 
       - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
-      
+- fix `ParamId` to be 1-based
 - should also accept path to ScriptDom.dll as an optional argument
 - for now, just:
   - takes a raw script pasted in (call at the end with lots of examples)
   - and outputs a PSCustom object to the console usng Write-Output.
-- need to also take an input argument to define output target
+- need to also take an argument to define output target
   - output to console
   - out-csv, out-xml, out-json, to pipeline, or to a file
   - pass credentials to save the DataTable to a database
