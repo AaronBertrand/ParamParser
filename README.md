@@ -68,7 +68,7 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
 
 ### What does it do
 
-For now, just takes a script (call at the end with lots of examples) and outputs a `PSObject` to the console using `Write-Output`. Now handles multiple batches, so sp_whoisactive, no problem. But it won't parse CREATE <object> from inside dynamic SQL, and it won't handle any script that SSMS can't parse.
+For now, just takes a script (call at the end with lots of examples) and outputs a `PSCustomObject` to the console using `Write-Output`. Now handles multiple batches, so sp_whoisactive, no problem. But it won't parse CREATE <object> from inside dynamic SQL, and it won't handle any script that SSMS can't parse.
 
 ### Shout-Outs
 
@@ -104,3 +104,4 @@ Basically, more sources, more targets, more options.
     - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
 - this now handles multiple batches, so sp_whoisactive, no problem
   - but it won't parse CREATE PROCEDURE from inside dynamic SQL
+- Maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (Azure function)
