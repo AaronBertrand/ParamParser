@@ -6,6 +6,8 @@
     - for a database, same, concat all definitions together with GO between each
     - but inject metadata so output can reflect source 
       - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
+      
+- should also accept path to ScriptDom.dll as an optional argument
 
 - for now, just:
   - takes a raw script pasted in (call at the end with lots of examples)
