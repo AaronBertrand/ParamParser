@@ -227,8 +227,6 @@ Function Get-ParsedParams
                 }
             }
         }
-
-        $SCript
     }
     process {
         $fragment = $parser.Parse([System.IO.StringReader]::New($script), [ref]$errors);
