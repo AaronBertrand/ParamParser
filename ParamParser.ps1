@@ -170,46 +170,89 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
     }
 }
 
-Function Get-ParsedParams ($script)
+Function Get-ParsedParams
 {
+    [CmdletBinding()]
+    param (
+        [Parameter(Position = 0, Mandatory = $false)]
+        [ValidateScript( {Test-Path $PSItem -PathType Leaf} )]
+        [string]$ScriptDomPath = "$($PSScriptRoot)/Microsoft.SqlServer.TransactSql.ScriptDom.dll",
+        [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "ScriptData")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Script,
+        [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "File")]
+        [ValidateScript({$PSItem | ForEach-Object {
+                ((Test-Path $_ -PathType Leaf) -and ([System.IO.Path]::GetExtension($_) -ieq ".sql"))
+            }
+        })]
+        [string[]]$File,
+        [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "Directory")]
+        [ValidateScript({$PSItem | ForEach-Object {
+                (Test-Path $_ -PathType Container)
+            }
+        })]
+        [string[]]$Directory
+    )
+    begin {
+        try {
+            Add-Type -Path $ScriptDomPath
+        }
+        catch {
+            throw "Please update ScriptDom.dll and verify the path." # we want to terminate any further process
+        }
 
-  try 
-  {
-    Add-Type -Path "$($PSScriptRoot)/Microsoft.SqlServer.TransactSql.ScriptDom.dll";
-  }
-  catch 
-  {
-    Write-Host "Please update ScriptDom.dll and verify the path." -ForegroundColor Blue;  
-  }
+        $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
+        $errors = [System.Collections.Generic.List[Microsoft.SqlServer.TransactSql.ScriptDom.ParseError]]::New();
 
-  $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
-  $errors = [System.Collections.Generic.List[Microsoft.SqlServer.TransactSql.ScriptDom.ParseError]]::New();
-  $fragment = $parser.Parse([System.IO.StringReader]::New($script), [ref]$errors);
+        # if user called with script data, nothing to do... otherwise we need to preprocess into common format
+        switch ($psCmdlet.ParameterSetName) {
+            "File" {
+                foreach ($item in $File) {
+                    $data = (Get-Content -Path $item -Raw)
+                    if (-not $data.EndsWith("GO")) {
+                        $data += "`nGO"
+                    }
+                    $Script += ($data + "`n`n")
+                }
+            }
+            "Directory" {
+                foreach ($item in $Directory) {
+                    Get-ChildItem -Path $item -Filter "*.sql" -Recurse | ForEach-Object {
+                        $data = (Get-Content -Path $_.FullName -Raw)
+                        if (-not $data.EndsWith("GO")) {
+                            $data += "`nGO"
+                        }
+                        $Script += ($data + "`n`n")
+                    }
+                }
+            }
+        }
 
+        $SCript
+    }
+    process {
+        $fragment = $parser.Parse([System.IO.StringReader]::New($script), [ref]$errors);
+        if ($errors.Count -gt 0) {
+            throw "$($errors.Count) parsing error(s): $(($errors | ConvertTo-Json))";
+        }
+        $visitor = [Visitor]::New();
+        $fragment.Accept($visitor);
+        # collapse rows
+        $idsToExclude = @();
+        for ($i = 1; $i -le $visitor.Results.Count; $i++) {
+            $thisObject = $visitor.Results[$i];
+            $prevObject = $visitor.Results[$i-1];
 
-  if ($errors.Count -gt 0) {
-    throw "$($errors.Count) parsing error(s): $(($errors | ConvertTo-Json))";
-  }
-
-
-  $visitor = [Visitor]::New();
-  $fragment.Accept($visitor);
-
-  # collapse rows
-  $idsToExclude = @();
-  for ($i = 1; $i -le $visitor.Results.Count; $i++) 
-  {
-      $thisObject = $visitor.Results[$i];
-      $prevObject = $visitor.Results[$i-1];
-
-      if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
-          $prevObject.ModuleId -eq $thisObject.ModuleId)
-      {
-        $prevObject.ObjectName = $thisObject.ObjectName;
-        $idsToExclude += ($i);
-      }
-  }
-  Write-Output ($visitor.Results | Where-Object {$_.Id -notin $idsToExclude});
+            if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
+                $prevObject.ModuleId -eq $thisObject.ModuleId) {
+                $prevObject.ObjectName = $thisObject.ObjectName;
+                $idsToExclude += ($i);
+            }
+        }
+    }
+    end {
+        Write-Output ($visitor.Results | Where-Object {$_.Id -notin $idsToExclude});
+    }
 }
 
 $script = @"
@@ -297,4 +340,7 @@ CREATE PROCEDURE dbo.some_procedure
     SET @c = 6;
 "@
 
-Get-ParsedParams -script $script;
+#Get-ParsedParams -Script $script;
+#Get-ParsedParams -File @("$PSScriptRoot/dirDemo/dir1/sample1.sql", "$PSScriptRoot/dirDemo/dir2/sample2.sql")
+#Get-ParsedParams -Directory "$PSScriptRoot/dirDemo"
+#Get-ParsedParams -Directory @("$PSScriptRoot/dirDemo/dir1", "$PSScriptRoot/dirDemo/dir2")
