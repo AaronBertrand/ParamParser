@@ -26,6 +26,15 @@
   # https://www.dbdelta.com/microsoft-sql-server-script-dom/
 #>
 
+try 
+{
+    Add-Type -Path "$($PSScriptRoot)/Microsoft.SqlServer.TransactSql.ScriptDom.dll";
+}
+catch {
+    throw "Please update ScriptDom.dll and verify the path."; # we want to terminate any further process
+}
+
+
 class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor 
 {
     $Results = [System.Collections.ArrayList]@();
@@ -176,7 +185,6 @@ Function Get-ParsedParams
     param (
         [Parameter(Position = 0, Mandatory = $false)]
         [ValidateScript( {Test-Path $PSItem -PathType Leaf} )]
-        [string]$ScriptDomPath = "$($PSScriptRoot)/Microsoft.SqlServer.TransactSql.ScriptDom.dll",
         [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "ScriptData")]
         [ValidateNotNullOrEmpty()]
         [string]$Script,
@@ -194,13 +202,6 @@ Function Get-ParsedParams
         [string[]]$Directory
     )
     begin {
-        try {
-            Add-Type -Path $ScriptDomPath
-        }
-        catch {
-            throw "Please update ScriptDom.dll and verify the path." # we want to terminate any further process
-        }
-
         $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
         $errors = [System.Collections.Generic.List[Microsoft.SqlServer.TransactSql.ScriptDom.ParseError]]::New();
 
