@@ -61,7 +61,7 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
     - `brew update`
     - `brew cask upgrade powershell`
 - Update ScriptDom
-  - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/))
+  - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package for DacFX from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/) or the SqlServer Powershell cmdlet [here](https://www.powershellgallery.com/packages/Sqlserver/21.1.18226#manual-download))
   - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
     - If you want to point elsewhere, update the `Add-Type` reference to point to that file location instead of `$($PSScriptRoot)`.
 
