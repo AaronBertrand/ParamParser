@@ -174,24 +174,24 @@ Function Get-ParsedParams
 {
     [CmdletBinding()]
     param (
-        [Parameter(Position = 0, Mandatory = $false)]
-        [ValidateScript( {Test-Path $PSItem -PathType Leaf} )]
-        [string]$ScriptDomPath = "$($PSScriptRoot)/Microsoft.SqlServer.TransactSql.ScriptDom.dll",
-        [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "ScriptData")]
+        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "ScriptData")]
         [ValidateNotNullOrEmpty()]
         [string]$Script,
-        [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "File")]
+        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "File")]
         [ValidateScript({$PSItem | ForEach-Object {
                 ((Test-Path $_ -PathType Leaf) -and ([System.IO.Path]::GetExtension($_) -ieq ".sql"))
             }
         })]
         [string[]]$File,
-        [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "Directory")]
+        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "Directory")]
         [ValidateScript({$PSItem | ForEach-Object {
                 (Test-Path $_ -PathType Container)
             }
         })]
-        [string[]]$Directory
+        [string[]]$Directory,
+        [Parameter(Position = 1, Mandatory = $false)]
+        [ValidateScript( {Test-Path $PSItem -PathType Leaf} )]
+        [string]$ScriptDomPath = "$($PSScriptRoot)/Microsoft.SqlServer.TransactSql.ScriptDom.dll",
     )
     begin {
         try {
@@ -338,7 +338,7 @@ CREATE PROCEDURE dbo.some_procedure
     SET @c = 6;
 "@
 
-#Get-ParsedParams -Script $script;
+Get-ParsedParams -Script $script;
 #Get-ParsedParams -File @("$PSScriptRoot/dirDemo/dir1/sample1.sql", "$PSScriptRoot/dirDemo/dir2/sample2.sql")
 #Get-ParsedParams -Directory "$PSScriptRoot/dirDemo"
 #Get-ParsedParams -Directory @("$PSScriptRoot/dirDemo/dir1", "$PSScriptRoot/dirDemo/dir2")
