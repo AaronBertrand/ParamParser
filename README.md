@@ -1,6 +1,6 @@
 # ParamParser
 
-You're here because you want to know the default values defined for your stored procedures, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple Powershell script that parses parameter information out of modules stored in a database, database scripts stored in files, or raw scripts inline.
+You're here because you want to know the default values defined for your stored procedures, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple PowerShell script that parses parameter information out of modules stored in a database, database scripts stored in files, or raw scripts inline.
 
 ### Background
 
@@ -42,7 +42,7 @@ CREATE PROCEDURE dbo.some_procedure
 
 My first action on discovering that procedure would be to have the developer fix it. Barring that, I'd love to see T-SQL that will reliably parse it, returning only the input parameters and their default values, and not the local variables. If you don't believe me, give it a try. **It's hard.**
 
-After answering a [recent question on Stack Overflow](https://stackoverflow.com/q/63581531/61305) about this, and tracing my steps back ~15 years, I came across [this great post](https://michaeljswart.com/2014/04/removing-comments-from-sql/) by Michael Swart. In that post, Michael uses the ScriptDom's [TSqlParser](https://docs.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.transactsql.scriptdom.tsqlparser) to remove both single-line and multi-line comments from a block of T-SQL. This gave me all the motivation I needed to take this a few steps further; I started with C#, but quickly determined that Powershell would be more flexible, more robust. And after several attempts at parsing through _every single token_ in a block of T-SQL, I found [Dan Guzman's post on ScriptDom](https://www.dbdelta.com/microsoft-sql-server-script-dom/), which talked about `TSqlFragmentVisitor`, and quickly changed directions.
+After answering a [recent question on Stack Overflow](https://stackoverflow.com/q/63581531/61305) about this, and tracing my steps back ~15 years, I came across [this great post](https://michaeljswart.com/2014/04/removing-comments-from-sql/) by Michael Swart. In that post, Michael uses the ScriptDom's [TSqlParser](https://docs.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.transactsql.scriptdom.tsqlparser) to remove both single-line and multi-line comments from a block of T-SQL. This gave me all the motivation I needed to take this a few steps further; I started with C#, but quickly determined that PowerShell would be more flexible, more robust. And after several attempts at parsing through _every single token_ in a block of T-SQL, I found [Dan Guzman's post on ScriptDom](https://www.dbdelta.com/microsoft-sql-server-script-dom/), which talked about `TSqlFragmentVisitor`, and quickly changed directions.
 
 The resulting code is being shared here, and this is what it was able to parse out of that small monstrosity:
 
@@ -50,18 +50,18 @@ The resulting code is being shared here, and this is what it was able to parse o
 
 ### Dependencies / How to Start
 
-This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the Powershell extension, brew, and update the ScriptDom package to the latest version. If you're on Windows, you probably won't need any of this help, but please reach out if you have issues. 
+This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the PowerShell extension, brew, and update the ScriptDom package to the latest version. If you're on Windows, you probably won't need any of this help, but please reach out if you have issues. 
 
-- Install the [Powershell extension for VS Code](https://code.visualstudio.com/docs/languages/powershell)
+- Install the [PowerShell extension for VS Code](https://code.visualstudio.com/docs/languages/powershell)
 - Install brew from [brew.sh](https://brew.sh/)
   - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"`
-- Install Powershell ([Microsoft instructions](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-6))
+- Install PowerShell ([Microsoft instructions](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-6))
   - `brew cask install powershell`
   - If pwsh is already available, make sure you have the latest version:
     - `brew update`
     - `brew cask upgrade powershell`
 - Update ScriptDom
-  - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package for DacFX from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/) or the SqlServer Powershell cmdlet [here](https://www.powershellgallery.com/packages/Sqlserver/21.1.18226#manual-download))
+  - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package for DacFX from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/) or the SqlServer PowerShell cmdlet [here](https://www.powershellgallery.com/packages/Sqlserver/21.1.18226#manual-download))
   - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
     - If you want to point elsewhere, update the `Add-Type` reference to point to that file location instead of `$($PSScriptRoot)`.
 
