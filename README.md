@@ -64,6 +64,10 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
   - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/))
   - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
     - If you want to point elsewhere, update the `Add-Type` reference to point to that file location instead of `$($PSScriptRoot)`.
+- Install Pester
+  - `Install-Module Pester`
+  - This will allow you to execute unit tests for validation during development efforts.
+  - Execute tests: `Invoke-Pester -Path ./tests/*`
 
 ### What does it do
 
