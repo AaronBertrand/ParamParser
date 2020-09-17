@@ -73,7 +73,7 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
 
 ### What does it do
 
-For now, it just takes a script (call at the end with lots of examples) and outputs a `PSCustomObject` to the console using `Write-Output`. I showed an abbreviated sample above, but the elements in the output are, perhaps not in the most logical order at present:
+For now, it just outputs a `PSCustomObject` to the console using `Write-Output`. I showed an abbreviated sample above, but the elements in the output are, perhaps not in the most logical order at present:
 
 - **`Id`**: 
   - Simply a row number incremented for every fragment visited.
