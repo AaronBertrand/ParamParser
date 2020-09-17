@@ -65,10 +65,9 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
   - `Install-Module Pester`
   - This will allow you to execute unit tests for validation during development efforts.
   - Execute tests: `Invoke-Pester -Path ./tests/*`
-- To run, simply:
-  ```
-  
-  ```
+- To run, in any PS session, `cd` to the repository folder, then:
+  - `Import-Module ./ParamParser.psd1`
+  - `Get-ParsedParams -script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
 
 ### What does it do
 
