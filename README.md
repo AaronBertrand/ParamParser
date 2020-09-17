@@ -18,7 +18,7 @@ The last two are not in the metadata anywhere, in any version up to and includin
 
 Parsing these default values out of the module definition with T-SQL seems like a fun idea (even [the docs](https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-parameters-transact-sql) suggest it), until you get beyond the simplest case. I tried back in 2006 ([after complaining about it to no avail](https://feedback.azure.com/forums/908035-sql-server/suggestions/32891455-populate-has-default-value-in-sys-parameters)), and again in 2009, and gave up both times. There are so many edge cases that make even finding the start and end of the parameter list difficult:
 
-- You can’t rely on the presence of (open and close parentheses) surrounding the parameter list, since they are optional (and may be found throughout the parameter list also).
+- You can’t rely on the presence of (open and close parentheses) surrounding the parameter list, since they are optional (and may be found throughout the parameter list).
 - You can't easily parse for the first AS to mark the beginning of the body, since it can appear for other reasons.
 - You can't rely on the presence of BEGIN to mark the beginning of the body, since it is optional.
 - It is hard to split on commas, since they can appear inside comments, string literals, and data type declarations (think (precision, scale)).
@@ -60,14 +60,20 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
   - If pwsh is already available, make sure you have the latest version:
     - `brew update`
     - `brew cask upgrade powershell`
-- Update ScriptDom
-  - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package for DacFX from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/) or the SqlServer PowerShell cmdlet [here](https://www.powershellgallery.com/packages/Sqlserver/21.1.18226#manual-download))
-  - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
-    - If you want to point elsewhere, update the `Add-Type` reference to point to that file location instead of `$($PSScriptRoot)`.
+- Run `init.ps1`, which will extract ScriptDom.dll from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download)
+- Install Pester
+  - `Install-Module Pester`
+  - This will allow you to execute unit tests for validation during development efforts.
+  - Execute tests: `Invoke-Pester -Path ./tests/*`
+- To run, in any PS session, `cd` to the repository folder, then:
+  - `Import-Module ./ParamParser.psd1`
+  - `Get-ParsedParams -script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
+  - `Get-ParsedParams -file "./dirDemo/dir1/sample1.sql"`
+  - `Get-ParsedParams -directory "./dirDemo/"`
 
 ### What does it do
 
-For now, it just takes a script (call at the end with lots of examples) and outputs a `PSCustomObject` to the console using `Write-Output`. I showed an abbreviated sample above, but the elements in the output are, perhaps not in the most logical order at present:
+For now, it just outputs a `PSCustomObject` to the console using `Write-Output`. I showed an abbreviated sample above, but the elements in the output are, perhaps not in the most logical order at present:
 
 - **`Id`**: 
   - Simply a row number incremented for every fragment visited.
@@ -105,23 +111,16 @@ I certainly can't take much credit here; there's already a big, growing list of 
 
 Basically, more sources, more targets, more options.
 
-- need to make it so it takes a source as an argument
-  - source can be a .sql file, array of files, folder, array of folders, or a database, array of databases, all user databases
-    - for one or more folders, concat all the files with GO between each 
-    - (maybe limit it to specific file types so we're not concatenting cat pictures)
-    - for a database, same, concat all definitions together with GO between each
-    - but inject metadata so output can reflect source 
-      - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
+- need to make it so it takes a database, array of databases, all user databases
+  - needs to accept credentials
+  - concat all definitions together with GO between each
+- inject metadata so output can reflect source 
+  - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
 - fix `ParamId` to be 1-based
-- should also accept path to ScriptDom.dll as an optional argument
-- for now, just:
-  - takes a raw script pasted in (call at the end with lots of examples)
-  - and outputs a PSCustom object to the console usng Write-Output.
-- need to also take an argument to define output target
+- need to define output target
   - output to console
   - out-csv, out-xml, out-json, to pipeline, or to a file
   - pass credentials to save the DataTable to a database
     - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
-- this now handles multiple batches, so sp_whoisactive, no problem
-  - but it won't parse CREATE PROCEDURE from inside dynamic SQL
-- Maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (Azure function)
+- cleaner error handling (e.g. for a typo in file/folder path)
+- maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (Azure function)
