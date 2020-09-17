@@ -123,4 +123,4 @@ Basically, more sources, more targets, more options.
   - pass credentials to save the DataTable to a database
     - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
 - cleaner error handling (e.g. for a typo in file/folder path)
-- Maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (Azure function)
+- maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (Azure function)
