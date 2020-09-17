@@ -1,6 +1,6 @@
 # ParamParser
 
-You're here because you want to know the default values defined for your stored procedures, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple PowerShell script that parses parameter information out of modules stored in a database, database scripts stored in files, or raw scripts inline.
+You're here because you want to know the default values defined for your stored procedures and functions, but SQL Server makes this next to impossible using native functionality. We started this little project to make it easier. It's a simple PowerShell module that parses parameter information out of objects stored in a database, scripts stored in files, or raw scripts inline.
 
 ### Background
 
@@ -60,14 +60,15 @@ This solution was developed using Visual Studio Code on a Mac. In order to debug
   - If pwsh is already available, make sure you have the latest version:
     - `brew update`
     - `brew cask upgrade powershell`
-- Update ScriptDom
-  - Download sqlpackage from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) (or the NuGet package from [here](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom/))
-  - Extract `Microsoft.SqlServer.TransactSql.ScriptDom.dll` from the package and copy it to the same folder as the .ps1 file
-    - If you want to point elsewhere, update the `Add-Type` reference to point to that file location instead of `$($PSScriptRoot)`.
+- Run `init.ps1`, which will extract ScriptDom.dll from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download)
 - Install Pester
   - `Install-Module Pester`
   - This will allow you to execute unit tests for validation during development efforts.
   - Execute tests: `Invoke-Pester -Path ./tests/*`
+- To run, simply:
+  ```
+  
+  ```
 
 ### What does it do
 
@@ -109,23 +110,15 @@ I certainly can't take much credit here; there's already a big, growing list of 
 
 Basically, more sources, more targets, more options.
 
-- need to make it so it takes a source as an argument
-  - source can be a .sql file, array of files, folder, array of folders, or a database, array of databases, all user databases
-    - for one or more folders, concat all the files with GO between each 
-    - (maybe limit it to specific file types so we're not concatenting cat pictures)
-    - for a database, same, concat all definitions together with GO between each
-    - but inject metadata so output can reflect source 
-      - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
+- need to make it so it takes a database, array of databases, all user databases
+  - needs to accept credentials
+  - concat all definitions together with GO between each
+- inject metadata so output can reflect source 
+  - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
 - fix `ParamId` to be 1-based
-- should also accept path to ScriptDom.dll as an optional argument
-- for now, just:
-  - takes a raw script pasted in (call at the end with lots of examples)
-  - and outputs a PSCustom object to the console usng Write-Output.
-- need to also take an argument to define output target
+- need to define output target
   - output to console
   - out-csv, out-xml, out-json, to pipeline, or to a file
   - pass credentials to save the DataTable to a database
     - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
-- this now handles multiple batches, so sp_whoisactive, no problem
-  - but it won't parse CREATE PROCEDURE from inside dynamic SQL
 - Maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (Azure function)

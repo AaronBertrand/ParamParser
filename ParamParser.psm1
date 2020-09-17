@@ -1,31 +1,3 @@
-<#
-- need to make it so it takes a source as an argument
-  - source can be a .sql file, array of files, folder, array of folders, or a database, array of databases, all user databases
-    - for one or more folders, concat all the files with GO between each 
-    - (maybe limit it to specific file types so we're not concatenting cat pictures)
-    - for a database, same, concat all definitions together with GO between each
-    - but inject metadata so output can reflect source 
-      - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
-      
-- should also accept path to ScriptDom.dll as an optional argument
-
-- for now, just:
-  - takes a raw script pasted in (call at the end with lots of examples)
-  - and outputs a PSCustom object to the console usng Write-Output.
-
-- need to also take an input argument to define output target
-  - output to console
-  - out-csv, out-xml, out-json, to pipeline, or to a file
-  - pass credentials to save the DataTable to a database
-    - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
-
-- this now handles multiple batches, so sp_whoisactive, no problem
-  - but it won't parse CREATE PROCEDURE from inside dynamic SQL
-  
-  # Visitor code lifted from Dan Guzman
-  # https://www.dbdelta.com/microsoft-sql-server-script-dom/
-#>
-
 #region classes
 class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor 
 {
