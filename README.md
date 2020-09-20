@@ -41,7 +41,7 @@ The resulting code is being shared here, and this is what it was able to parse o
 
 ### Dependencies / How to Start
 
-You need to have the ScriptDom.dll locally in order to use the related classes here, but we can't legally give you that file. After that, you can import the ParamParser module, and then run `Get-ParsedParams` with a string, a file, or a directory. Output is not perfect yet, but we'll get there. 
+You need to have the latest ScriptDom.dll locally in order to use the related classes here, but we can't legally give you that file. After that, you can import the ParamParser module, and then run `Get-ParsedParams` with a string, a file, or a directory. Output is not perfect yet, but we'll get there. 
 
 - Clone this repository
 - Run `init.ps1`, which will extract the latest version of `ScriptDom.dll` from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) into the script root
