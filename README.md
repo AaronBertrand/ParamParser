@@ -4,17 +4,7 @@ You're here because you want to know the default values defined for your stored 
 
 ### Background
 
-Since SQL Server first supported parameters to stored procedures and functions, we've had access to metadata about those parameters, but this metadata has never been complete:
-
-- [x] parameter name
-- [x] data type
-- [x] ordinal position
-- [x] direction (input / output)
-- [x] read only
-- [ ] ~whether it has a default value~
-- [ ] ~the actual default value~
-
-The last two are not in the metadata anywhere, in any version up to and including SQL Server 2019. [The `sys.parameters` catalog view](https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-parameters-transact-sql) contains the columns `has_default_value` and `default_value`, which sound promising, but these are only ever populated for CLR objects. Management Studio tells you about the _presence_ of a default value, but it doesn't get that from the system catalog; it gets that by parsing the module's definition. And it doesn't tell you the default value when there is one. 
+Since SQL Server first supported parameters to stored procedures and functions, we've had access to metadata about those parameters, but this metadata has never been complete. Whether a parameter has default values, and what they are, are not in the metadata anywhere. [The `sys.parameters` catalog view](https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-parameters-transact-sql) contains the columns `has_default_value` and `default_value`, which sound promising, but these are only ever populated for CLR objects. Management Studio tells you about the _presence_ of a default value, but it doesn't get that from the system catalog; it gets that by parsing the module's definition. And it doesn't tell you the default value when there is one. 
 
 Parsing these default values out of the module definition with T-SQL seems like a fun idea (even [the docs](https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-parameters-transact-sql) suggest it), until you get beyond the simplest case. I tried back in 2006 ([after complaining about it to no avail](https://feedback.azure.com/forums/908035-sql-server/suggestions/32891455-populate-has-default-value-in-sys-parameters)), and again in 2009, and gave up both times. There are so many edge cases that make even finding the start and end of the parameter list difficult:
 
@@ -50,26 +40,18 @@ The resulting code is being shared here, and this is what it was able to parse o
 
 ### Dependencies / How to Start
 
-This solution was developed using Visual Studio Code on a Mac. In order to debug and build, I had to install the PowerShell extension, brew, and update the ScriptDom package to the latest version. If you're on Windows, you probably won't need any of this help, but please reach out if you have issues. 
+You need to have the ScriptDom.dll locally in order to use the related classes here, but we can't legally give you that file. After that, you can import the ParamParser module, and then run `Get-ParsedParams` with a string, a file, or a directory. Output is not perfect yet, but we'll get there. 
 
-- Install the [PowerShell extension for VS Code](https://code.visualstudio.com/docs/languages/powershell)
-- Install brew from [brew.sh](https://brew.sh/)
-  - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"`
-- Install PowerShell ([Microsoft instructions](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-6))
-  - `brew cask install powershell`
-  - If pwsh is already available, make sure you have the latest version:
-    - `brew update`
-    - `brew cask upgrade powershell`
 - Run `init.ps1`, which will extract ScriptDom.dll from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download)
-- Install Pester
-  - `Install-Module Pester`
-  - This will allow you to execute unit tests for validation during development efforts.
-  - Execute tests: `Invoke-Pester -Path ./tests/*`
 - To run, in any PS session, `cd` to the repository folder, then:
   - `Import-Module ./ParamParser.psd1`
   - `Get-ParsedParams -script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
   - `Get-ParsedParams -file "./dirDemo/dir1/sample1.sql"`
   - `Get-ParsedParams -directory "./dirDemo/"`
+- For unit testing, install Pester
+  - `Install-Module Pester`
+  - This will allow you to execute unit tests for validation during development efforts
+  - Execute tests: `Invoke-Pester -Path ./tests/*`
 
 ### What does it do
 
