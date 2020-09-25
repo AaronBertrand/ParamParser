@@ -4,19 +4,11 @@ You're here because you want to know the default values defined for your stored 
 
 ### Background
 
-Since SQL Server first supported parameters to stored procedures and functions, we've had access to metadata about those parameters, but this metadata has never been complete. Whether a parameter has default values, and what they are, are not in the metadata anywhere. [The `sys.parameters` catalog view](https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-parameters-transact-sql) contains the columns `has_default_value` and `default_value`, which sound promising, but these are only ever populated for CLR objects. Management Studio tells you about the _presence_ of a default value, but it doesn't get that from the system catalog; it gets that by parsing the module's definition. And it doesn't tell you the default value when there is one. 
+I've begun writing about the journey here:
 
-Parsing these default values out of the module definition with T-SQL seems like a fun idea (even [the docs](https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-parameters-transact-sql) suggest it), until you get beyond the simplest case. I tried back in 2006 ([after complaining about it to no avail](https://feedback.azure.com/forums/908035-sql-server/suggestions/32891455-populate-has-default-value-in-sys-parameters)), and again in 2009, and gave up both times. There are so many edge cases that make even finding the start and end of the parameter list difficult:
+* [Parse parameter default values using PowerShell - Part 1](https://sqlperformance.com/2020/09/sql-performance/paramparser-1)
 
-- You can’t rely on the presence of `(` and `)` to indicate the parameter list, since they are optional (and may be found throughout the parameter list)
-- You can't easily parse for the first `AS` to mark the beginning of the body, since it can appear for other reasons
-- You can't rely on the presence of `BEGIN` to mark the beginning of the body, since it is optional
-- It is hard to split on commas, since they can appear inside comments, within string literals, and as part of data type declarations (think `(precision, scale)`)
-- It is very hard to parse away both types of comments, which can appear anywhere (including inside string literals), and can be nested
-- You can inadvertently find important keywords, commas, and equals signs inside string literals and comments
-- You can have default values that aren't numbers or string literals (think `{fn curdate()}` or `GETDATE`)
-
-Take this (intentionally ridiculous) example:
+But to see a quick example of what the current code does, take this (intentionally ridiculous) example:
 
 ```
 /* AS BEGIN , @a int = 7, comments can appear anywhere */
@@ -31,11 +23,7 @@ CREATE PROCEDURE dbo.some_procedure
     SET @c = 6;
 ```
 
-My first action on discovering that procedure would be to have the developer fix it. Barring that, I'd love to see T-SQL that will reliably parse it, returning only the input parameters and their default values, and not the local variables. If you don't believe me, give it a try. **It's hard.**
-
-After answering a [recent question on Stack Overflow](https://stackoverflow.com/q/63581531/61305) about this, and tracing my steps back ~15 years, I came across [this great post](https://michaeljswart.com/2014/04/removing-comments-from-sql/) by Michael Swart. In that post, Michael uses the ScriptDom's [TSqlParser](https://docs.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.transactsql.scriptdom.tsqlparser) to remove both single-line and multi-line comments from a block of T-SQL. This gave me all the motivation I needed to take this a few steps further; I started with C#, but quickly determined that PowerShell would be more flexible, more robust. And after several attempts at parsing through _every single token_ in a block of T-SQL, I found [Dan Guzman's post on ScriptDom](https://www.dbdelta.com/microsoft-sql-server-script-dom/), which talked about `TSqlFragmentVisitor`, and quickly changed directions.
-
-The resulting code is being shared here, and this is what it was able to parse out of that small monstrosity:
+The code here parses through all that garbage and outputs something like this:
 
 ![](https://sqlblog.org/wp-content/uploads/2020/09/param-parser-output-0.96.png)
 
