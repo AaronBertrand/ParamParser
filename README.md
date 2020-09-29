@@ -1,6 +1,6 @@
 # ParamParser
 
-You're here because you want to know the default values defined for your stored procedures, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple PowerShell script that parses parameter information out of modules stored in a database, database scripts stored in files, or raw scripts inline.
+You're here because you want to know the default values defined for your stored procedures and functions, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple PowerShell script that parses parameter information out of modules stored in a database, database scripts stored in files, or raw scripts inline.
 
 ### Background
 
@@ -35,9 +35,21 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
 - Run `init.ps1`, which will extract the latest version of `ScriptDom.dll` from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) into the script root
 - To run, in any PS session, `cd` to the repository folder, then:
   - `Import-Module ./ParamParser.psd1`
-  - `Get-ParsedParams -script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
-  - `Get-ParsedParams -file "./dirDemo/dir1/sample1.sql"`
-  - `Get-ParsedParams -directory "./dirDemo/"`
+  - For a raw script:
+    - `Get-ParsedParams -Script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
+  - For a file or folder:
+    - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql"`
+    - `Get-ParsedParams -Directory "./dirDemo/"`
+  - For a database:
+    - Using current Windows Auth credentials:
+      - `Get-ParsedParams -Server "server\instance" -Database "db"`
+    - To prompt for different Windows Auth credentials:
+      - `Get-ParsedParams -Server "server" -Database "db" -Prompt $true`
+    - To pass in a SecureString SQL Auth password (assuming you'd get securestring from another source):
+      - `$pw = "password" | ConvertTo-SecureString -AsPlainText -Force`
+      - `Get-ParsedParams -Server "server" -Database "db" -Username "username" -SecurePassword $pw`
+    - To pass in a plaintext SQL Auth password (least desirable method):
+      - `Get-ParsedParams -Server "server" -Database "db" -Username "username" -InsecurePassword "password"`
 - For unit testing, install Pester
   - `Install-Module Pester`
   - This will allow you to execute unit tests for validation during development efforts
@@ -83,16 +95,16 @@ I certainly can't take much credit here; there's already a big, growing list of 
 
 Basically, more sources, more targets, more options.
 
-- need to make it so it takes a database, array of databases, all user databases
-  - needs to accept credentials
-  - concat all definitions together with GO between each
+- need to make it so it takes an array of databases, all user databases on a server, multiple servers, etc.
 - inject metadata so output reflects source 
-  - (say if two different files (or even different batches in the same file) contain procedures with same name but different interface)
+  - say, if, two different files (or even different batches in the same file) contain procedures with same name but different interface
+  - or if two databases contain same procedure name, or two servers contain similar databases, etc.
 - fix `ParamId` to be 1-based
 - need to define output target
   - output to console
   - out-csv, out-xml, out-json, to pipeline, or to a file
-  - pass credentials to save the DataTable to a database
+  - pass credentials (or reuse same credentials) to save the DataTable to a database
     - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
 - cleaner error handling (e.g. for a typo in file/folder path)
+  - also make error handling for database connections optionally more verbose for diagnostics
 - maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (Azure function)

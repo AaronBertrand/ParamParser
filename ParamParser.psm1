@@ -152,18 +152,37 @@ Function Get-ParsedParams
         [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "ScriptData")]
         [ValidateNotNullOrEmpty()]
         [string]$Script,
+
         [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "File")]
         [ValidateScript({$PSItem | ForEach-Object {
                 ((Test-Path $_ -PathType Leaf) -and ([System.IO.Path]::GetExtension($_) -ieq ".sql"))
             }
         })]
         [string[]]$File,
+
         [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "Directory")]
         [ValidateScript({$PSItem | ForEach-Object {
                 (Test-Path $_ -PathType Container)
             }
         })]
-        [string[]]$Directory
+        [string[]]$Directory,
+
+        # For database, let's start with two simple params, and assume Windows Auth
+        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Server,
+        [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Database,
+        [Parameter(Position = 2, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [string]$Username,
+        [Parameter(Position = 3, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [SecureString]$SecurePassword,
+        [Parameter(Position = 4, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [System.Boolean]$Prompt,
+        #NotRecommended!:
+        [Parameter(Position = 5, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [string]$InsecurePassword
     )
     begin {
         $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
@@ -191,8 +210,53 @@ Function Get-ParsedParams
                     }
                 }
             }
+            "SQLServer" {
+                $connstring = "Server=$Server; Database=$Database;"
+                if ($Username -gt "") {
+                    if ($InsecurePassword -gt "") {
+                        $PlainPassword = $InsecurePassword
+                    }
+                    else {
+                        $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
+                        $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                    }
+                    $connstring += "User ID=$Username; Password=$PlainPassword;"
+                }
+                elseif ($Prompt -eq $true)
+                {
+                    $cred = Get-Credential -Message "Enter Windows auth credentials"
+                    $cred.Password.MakeReadOnly()
+                    $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
+                }
+                else {
+                    $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+                }
+
+                try {
+                    $connection = New-Object System.Data.SqlClient.SqlConnection($connstring)
+                    if ($Prompt -eq $true) {
+                        $connection.SqlCredential = $SQLCred
+                    }
+                    $connection.Open()
+                    $command = $connection.CreateCommand()
+                    $command.CommandText = @"
+                        SELECT script = OBJECT_DEFINITION(object_id) 
+                            FROM sys.objects 
+                            WHERE type IN (N'P',N'IF',N'FN',N'TF');
+"@
+                    $reader = $command.ExecuteReader()
+                    while ($reader.Read()) {
+                        $data = $reader.GetValue(0).ToString()
+                        $Script += ($data + "`nGO`n`n")
+                    }
+                }
+                catch {
+                    Write-Host "Database connection failed."
+                }
+            }
         }
     }
+
     process {
         $fragment = $parser.Parse([System.IO.StringReader]::New($script), [ref]$errors);
         if ($errors.Count -gt 0) {
