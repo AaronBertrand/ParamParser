@@ -222,21 +222,19 @@ Function Get-ParsedParams
                     }
                     $connstring += "User ID=$Username; Password=$PlainPassword;"
                 }
-                elseif ($Prompt -eq $true)
-                {
-                    $cred = Get-Credential -Message "Enter Windows auth credentials"
-                    $cred.Password.MakeReadOnly()
-                    $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
-                }
-                else {
-                    $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
-                }
 
                 try {
-                    $connection = New-Object System.Data.SqlClient.SqlConnection($connstring)
-                    if ($Prompt -eq $true) {
-                        $connection.SqlCredential = $SQLCred
+                    $connection = New-Object System.Data.SqlClient.SqlConnection;
+                    if ($Prompt -eq $true -or $Username -gt "") {
+                        $cred = Get-Credential -Message "Enter Windows Auth credentials"
+                        $cred.Password.MakeReadOnly()
+                        $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
+                        $connection.Credential = $SQLCred
                     }
+                    else {
+                        $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+                    }
+                    $connection.ConnectionString = $connstring;    
                     $connection.Open()
                     $command = $connection.CreateCommand()
                     $command.CommandText = @"
