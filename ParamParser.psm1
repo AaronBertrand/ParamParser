@@ -172,14 +172,14 @@ Function Get-ParsedParams
         [string]$ServerInstance,
         [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "SQLServer")]
         [ValidateNotNullOrEmpty()]
-        [string]$Database,
+        [string[]]$Database,
         [Parameter(Position = 2, Mandatory = $false, ParameterSetName = "SQLServer")]
         [ValidateNotNullOrEmpty()]
         [string]$AuthenticationMode = "Windows", # Or SQL
         #[Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         #[switch]$Prompt, # to specify _alternate_ Windows auth credentials
 
-        # if SQL - can I make this mandator _if_ SQL is specified?
+        # if SQL - can I make this mandatory _if_ SQL is specified?
         [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         [string]$Username,
         [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
@@ -215,51 +215,54 @@ Function Get-ParsedParams
                 }
             }
             "SQLServer" {
-                $connstring = "Server=$ServerInstance; Database=$Database;"
-                $connection = New-Object System.Data.SqlClient.SqlConnection;
-                switch ($AuthenticationMode)
-                {
-                    "SQL" { 
-                        if ($InsecurePassword -gt "") {
-                            $PlainPassword = $InsecurePassword # ConvertTo-SecureString $InsecurePassword -AsPlainText -Force
-                            # $PlainPassword.MakeReadOnly()
+                foreach ($srv in $ServerInstance) {
+                    foreach ($db in $Database) {
+                        $connstring = "Server=$srv; Database=$db;"
+                        $connection = New-Object System.Data.SqlClient.SqlConnection;
+                        switch ($AuthenticationMode) {
+                            "SQL" { 
+                                if ($InsecurePassword -gt "") {
+                                    $PlainPassword = $InsecurePassword # ConvertTo-SecureString $InsecurePassword -AsPlainText -Force
+                                    # $PlainPassword.MakeReadOnly()
+                                }
+                                else {
+                                    $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
+                                    $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                                }
+                                # $connection.Credential = New-Object System.Data.SqlClient.SqlCredential($Username, $PlainPassword)
+                                $connstring += "User ID=$Username; Password=$PlainPassword;"
+                            }
+                            "Windows" {
+                                $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+                                # if ($Prompt) { # if we can add _alternate_ Windows Auth credentials
+                                                # this may need Invoke-SqlCmd vs. SqlConnection?
+                                    # $cred = Get-Credential -Message "Enter Windows Auth credentials:" # -UserName $Username
+                                    # $cred.Password.MakeReadOnly()
+                                    # $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
+                                    # $connection.Credential = $SQLCred
+                                # }
+                            }
                         }
-                        else {
-                            $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
-                            $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-                        }
-                        # $connection.Credential = New-Object System.Data.SqlClient.SqlCredential($Username, $PlainPassword)
-                        $connstring += "User ID=$Username; Password=$PlainPassword;"
-                    }
-                    "Windows" {
-                        $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
-                        # if ($Prompt) { # if we can add _alternate_ Windows Auth credentials
-                                         # this may need Invoke-SqlCmd vs. SqlConnection?
-                            # $cred = Get-Credential -Message "Enter Windows Auth credentials:" # -UserName $Username
-                            # $cred.Password.MakeReadOnly()
-                            # $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
-                            # $connection.Credential = $SQLCred
-                        # }
-                    }
-                }
-                $connection.ConnectionString = $connstring;    
+                        $connection.ConnectionString = $connstring;    
 
-                try {
-                    $connection.Open()
-                    $command = $connection.CreateCommand()
-                    $command.CommandText = @"
-                        SELECT script = OBJECT_DEFINITION(object_id) 
-                            FROM sys.objects 
-                            WHERE type IN (N'P',N'IF',N'FN',N'TF');
+                        try {
+                            $connection.Open()
+                            $command = $connection.CreateCommand()
+                            $command.CommandText = @"
+                                SELECT script = OBJECT_DEFINITION(object_id) 
+                                    FROM sys.objects 
+                                    WHERE type IN (N'P',N'IF',N'FN',N'TF');
 "@
-                    $reader = $command.ExecuteReader()
-                    while ($reader.Read()) {
-                        $data = $reader.GetValue(0).ToString()
-                        $Script += ($data + "`nGO`n`n")
+                            $reader = $command.ExecuteReader()
+                            while ($reader.Read()) {
+                                $data = $reader.GetValue(0).ToString()
+                                $Script += ($data + "`nGO`n`n")
+                            }
+                        }
+                        catch {
+                            Write-Host "Database connection failed ($($srv), $($db))." -ForegroundColor Yellow
+                        }
                     }
-                }
-                catch {
-                    Write-Host "Database connection failed."
                 }
             }
         }

@@ -29,12 +29,13 @@ The code here parses through all that garbage and outputs something like this:
 
 ### Dependencies / How to Start
 
-You need to have the latest ScriptDom.dll locally in order to use the related classes here, but we can't legally give you that file. After that, you can import the ParamParser module, and then run `Get-ParsedParams` with a string, a file, or a directory. Output is not perfect yet, but we'll get there. 
+You need to have the latest ScriptDom.dll locally in order to use the related classes here, but we can't legally give you that file. After that, you can import the ParamParser module, and then run `Get-ParsedParams` with a string, a database, a file, or a directory. Output is not perfect yet, but we'll get there. 
 
 - Clone this repository
 - Run `init.ps1`, which will extract the latest version of `ScriptDom.dll` from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) into the script root
 - To run, in any PS session, `cd` to the repository folder, then:
-  - `Import-Module ./ParamParser.psd1`
+  - `Import-Module ./ParamParser.psm1`
+    - If testing local changes, add `-Force` to overwrite
   - For a raw script:
     - `Get-ParsedParams -Script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
   - For a file or folder:
@@ -43,11 +44,15 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
   - For a database:
     - Using current Windows Auth credentials:
       - `Get-ParsedParams -ServerInstance "server\instance" -Database "db" -AuthenticationMode "Windows"`
+      - `Get-ParsedParams -ServerInstance "server\instance" -Database "db"` (Windows is the default)
     - To pass in a SecureString SQL Auth password (assuming you'd get securestring from another source):
       - `$password = "password" | ConvertTo-SecureString -AsPlainText -Force`
       - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -SecurePassword $password`
     - To pass in a plaintext SQL Auth password:
       - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -InsecurePassword "password"`
+    - For multiple instances or databases (usually won't provide multiple of both at the same time):
+      - `Get-ParsedParams -ServerInstance "server1","server2" -Database "db"`
+      - `Get-ParsedParams -ServerInstance "server" -Database "db1","db2"`
 - For unit testing, install Pester
   - `Install-Module Pester`
   - This will allow you to execute unit tests for validation during development efforts
@@ -55,22 +60,22 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
 
 ### What does it do
 
-For now, it just outputs a `PSCustomObject` to the console using `Write-Output`. I showed an abbreviated sample above, but the elements in the output are, perhaps not in the most logical order at present:
+For now, it just outputs a `PSCustomObject` to the console using `Write-Output`. I showed an abbreviated sample above, but the elements in the output are, ungrouped and perhaps not in the most logical order at present:
 
 - **`Id`**: 
-  - Simply a row number incremented for every fragment visited.
+  - A simple counter incremented for every fragment visited.
 - **`ModuleId`**: 
-  - A counter that increments for every new procedure or function body we encounter.
+  - A counter that increments for every new procedure or function body we encounter (this has no relation to `object_id`).
 - **`ObjectName`**: 
-  - The name of the object.
+  - The one- or two-part name of the object.
 - **`ParamId`**: 
-  - A counter that increments for every new parameter we encounter inside a module. (Currently 0-based but this should be 1-based.)
+  - A counter that increments for every new parameter we encounter inside a module.
 - **`StatementType`**: 
-  - Whether it's `create`/`alter`/`create or alter` | `procedure` / `function`.
+  - Whether it's `create`/`alter`/`create or alter` | `procedure` / `function`. When pulling from a database, this will always be `create`.
 - **`DataType`**: 
   - Properly defined data type _as written_ - e.g. this will show `float(23)` if that's what the module defines, even if that isn't the data type stored in `sys.parameters`.
 - **`DefaultValue`**: 
-  - The literal text supplied by default, whether it's a string or numeric literal, an ODBC literal, or an identifier like `GETDATE()`.
+  - The literal text supplied by default, whether it's a string or numeric literal, an ODBC literal, or a string disguised as an identifier (e.g. `GETDATE`).
 - **`IsOutput`**: 
   - Whether the parameter is defined as `OUT`/`OUTPUT`.
 - **`IsReadOnly`**: 
@@ -93,10 +98,10 @@ I certainly can't take much credit here; there's already a big, growing list of 
 
 Basically, more sources, more targets, more options.
 
-- need to make it so it takes an array of databases, all user databases on a server, multiple servers, etc.
-- inject metadata so output reflects source 
+- need to make it so it takes shorthand for a subset of databases, like all user databases on an instance
+- inject metadata in output so it better reflects source 
   - say, if, two different files (or even different batches in the same file) contain procedures with same name but different interface
-  - or if two databases contain same procedure name, or two servers contain similar databases, etc.
+  - or if two databases contain the same procedure name, or two instances contain similar databases, etc.
 - need to define output target
   - output to console, out-csv, out-xml, out-json, to pipeline, or to a file
   - pass additional credentials (or reuse same credentials) to save the DataTable to a database
