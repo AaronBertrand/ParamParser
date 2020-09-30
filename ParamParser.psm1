@@ -30,7 +30,7 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 
     hidden [int]$Counter = 0;
     hidden [int]$ModuleId = 0;
-    hidden [int]$ParamId = 0;
+    hidden [int]$ParamId = 1;
 
     [void]Visit ([Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragment] $fragment)
     {
@@ -42,7 +42,7 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
             if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements))
             {
                 $this.ModuleId++;
-                $this.ParamId = 0;
+                $this.ParamId = 1;
             }
 
             $result = $this.GetResultObject($fragmentType);
@@ -167,7 +167,6 @@ Function Get-ParsedParams
         })]
         [string[]]$Directory,
 
-        # For database, let's start with two simple params, and assume Windows Auth
         [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "SQLServer")]
         [ValidateNotNullOrEmpty()]
         [string]$Server,
@@ -175,13 +174,16 @@ Function Get-ParsedParams
         [ValidateNotNullOrEmpty()]
         [string]$Database,
         [Parameter(Position = 2, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [ValidateNotNullOrEmpty()]
+        [string]$AuthenticationMode = "Windows", # SQL, Trusted
+        #[Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
+        #[switch]$Prompt, # to specify _alternate_ Windows auth credentials
+        [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         [string]$Username,
-        [Parameter(Position = 3, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         [SecureString]$SecurePassword,
-        [Parameter(Position = 4, Mandatory = $false, ParameterSetName = "SQLServer")]
-        [System.Boolean]$Prompt,
         #NotRecommended!:
-        [Parameter(Position = 5, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         [string]$InsecurePassword
     )
     begin {
@@ -212,29 +214,34 @@ Function Get-ParsedParams
             }
             "SQLServer" {
                 $connstring = "Server=$Server; Database=$Database;"
-                if ($Username -gt "") {
-                    if ($InsecurePassword -gt "") {
-                        $PlainPassword = $InsecurePassword
+                $connection = New-Object System.Data.SqlClient.SqlConnection;
+                switch ($AuthenticationMode)
+                {
+                    "SQL" { 
+                        if ($InsecurePassword -gt "") {
+                            $PlainPassword = $InsecurePassword # ConvertTo-SecureString $InsecurePassword -AsPlainText -Force
+                            # $PlainPassword.MakeReadOnly()
+                        }
+                        else {
+                            $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
+                            $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                        }
+                        # $connection.Credential = New-Object System.Data.SqlClient.SqlCredential($Username, $PlainPassword)
+                        $connstring += "User ID=$Username; Password=$PlainPassword;"
                     }
-                    else {
-                        $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
-                        $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                    "Windows" {
+                        $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+                        # if ($Prompt) { # if we can add _alternate_ Windows Auth credentials
+                            # $cred = Get-Credential -Message "Enter Windows Auth credentials:" # -UserName $Username
+                            # $cred.Password.MakeReadOnly()
+                            # $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
+                            # $connection.Credential = $SQLCred
+                        # }
                     }
-                    $connstring += "User ID=$Username; Password=$PlainPassword;"
                 }
+                $connection.ConnectionString = $connstring;    
 
                 try {
-                    $connection = New-Object System.Data.SqlClient.SqlConnection;
-                    if ($Prompt -eq $true -or $Username -gt "") {
-                        $cred = Get-Credential -Message "Enter Windows Auth credentials"
-                        $cred.Password.MakeReadOnly()
-                        $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
-                        $connection.Credential = $SQLCred
-                    }
-                    else {
-                        $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
-                    }
-                    $connection.ConnectionString = $connstring;    
                     $connection.Open()
                     $command = $connection.CreateCommand()
                     $command.CommandText = @"

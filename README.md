@@ -42,14 +42,12 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
     - `Get-ParsedParams -Directory "./dirDemo/"`
   - For a database:
     - Using current Windows Auth credentials:
-      - `Get-ParsedParams -Server "server\instance" -Database "db"`
-    - To prompt for different Windows Auth credentials:
-      - `Get-ParsedParams -Server "server" -Database "db" -Prompt $true`
+      - `Get-ParsedParams -Server "server\instance" -Database "db" -AuthenticationMode "Windows"`
     - To pass in a SecureString SQL Auth password (assuming you'd get securestring from another source):
-      - `$pw = "password" | ConvertTo-SecureString -AsPlainText -Force`
-      - `Get-ParsedParams -Server "server" -Database "db" -Username "username" -SecurePassword $pw`
-    - To pass in a plaintext SQL Auth password (least desirable method):
-      - `Get-ParsedParams -Server "server" -Database "db" -Username "username" -InsecurePassword "password"`
+      - `$password = "password" | ConvertTo-SecureString -AsPlainText -Force`
+      - `Get-ParsedParams -Server "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -SecurePassword $password`
+    - To pass in a plaintext SQL Auth password:
+      - `Get-ParsedParams -Server "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -InsecurePassword "password"`
 - For unit testing, install Pester
   - `Install-Module Pester`
   - This will allow you to execute unit tests for validation during development efforts
@@ -99,11 +97,9 @@ Basically, more sources, more targets, more options.
 - inject metadata so output reflects source 
   - say, if, two different files (or even different batches in the same file) contain procedures with same name but different interface
   - or if two databases contain same procedure name, or two servers contain similar databases, etc.
-- fix `ParamId` to be 1-based
 - need to define output target
-  - output to console
-  - out-csv, out-xml, out-json, to pipeline, or to a file
-  - pass credentials (or reuse same credentials) to save the DataTable to a database
+  - output to console, out-csv, out-xml, out-json, to pipeline, or to a file
+  - pass additional credentials (or reuse same credentials) to save the DataTable to a database
     - would need database, procedure, parameter name or database, TVP type name (give a definition for this), table name
 - cleaner error handling (e.g. for a typo in file/folder path)
   - also make error handling for database connections optionally more verbose for diagnostics
