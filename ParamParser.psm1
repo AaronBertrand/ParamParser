@@ -169,15 +169,17 @@ Function Get-ParsedParams
 
         [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "SQLServer")]
         [ValidateNotNullOrEmpty()]
-        [string]$Server,
+        [string]$ServerInstance,
         [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "SQLServer")]
         [ValidateNotNullOrEmpty()]
         [string]$Database,
         [Parameter(Position = 2, Mandatory = $false, ParameterSetName = "SQLServer")]
         [ValidateNotNullOrEmpty()]
-        [string]$AuthenticationMode = "Windows", # SQL, Trusted
+        [string]$AuthenticationMode = "Windows", # Or SQL
         #[Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         #[switch]$Prompt, # to specify _alternate_ Windows auth credentials
+
+        # if SQL - can I make this mandator _if_ SQL is specified?
         [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         [string]$Username,
         [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
@@ -213,7 +215,7 @@ Function Get-ParsedParams
                 }
             }
             "SQLServer" {
-                $connstring = "Server=$Server; Database=$Database;"
+                $connstring = "Server=$ServerInstance; Database=$Database;"
                 $connection = New-Object System.Data.SqlClient.SqlConnection;
                 switch ($AuthenticationMode)
                 {
@@ -232,6 +234,7 @@ Function Get-ParsedParams
                     "Windows" {
                         $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
                         # if ($Prompt) { # if we can add _alternate_ Windows Auth credentials
+                                         # this may need Invoke-SqlCmd vs. SqlConnection?
                             # $cred = Get-Credential -Message "Enter Windows Auth credentials:" # -UserName $Username
                             # $cred.Password.MakeReadOnly()
                             # $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)

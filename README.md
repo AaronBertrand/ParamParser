@@ -42,12 +42,12 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
     - `Get-ParsedParams -Directory "./dirDemo/"`
   - For a database:
     - Using current Windows Auth credentials:
-      - `Get-ParsedParams -Server "server\instance" -Database "db" -AuthenticationMode "Windows"`
+      - `Get-ParsedParams -ServerInstance "server\instance" -Database "db" -AuthenticationMode "Windows"`
     - To pass in a SecureString SQL Auth password (assuming you'd get securestring from another source):
       - `$password = "password" | ConvertTo-SecureString -AsPlainText -Force`
-      - `Get-ParsedParams -Server "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -SecurePassword $password`
+      - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -SecurePassword $password`
     - To pass in a plaintext SQL Auth password:
-      - `Get-ParsedParams -Server "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -InsecurePassword "password"`
+      - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -InsecurePassword "password"`
 - For unit testing, install Pester
   - `Install-Module Pester`
   - This will allow you to execute unit tests for validation during development efforts
