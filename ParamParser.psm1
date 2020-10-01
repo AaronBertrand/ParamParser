@@ -18,13 +18,13 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
           Id = $this.Counter
           ModuleId = $this.ModuleId
           ObjectName = $this.ObjectName
-          ParamId = $this.ParamId
           StatementType = $StatementType
+          ParamId = $this.ParamId
+          ParamName = [string]::Empty
           DataType = [string]::Empty
           DefaultValue = [string]::Empty
           IsOutput = $false
           IsReadOnly = $false
-          ParamName = [string]::Empty
       })
     }
 
@@ -284,12 +284,78 @@ Function Get-ParsedParams
             if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
                 $prevObject.ModuleId -eq $thisObject.ModuleId) {
                 $prevObject.ObjectName = $thisObject.ObjectName;
-                $idsToExclude += ($i);
+                $idsToExclude += $i;
             }
         }
     }
     end {
+        # list all properties for all *important* fragments - longer output:
+
         Write-Output ($visitor.Results | Where-Object {$_.Id -notin $idsToExclude});
+
+        # grouped and more compact (but still not optimal) output:
+        
+        $visitor.Results | Where-Object Id -notin $idsToExclude | Group-Object -Property ModuleId | 
+          Select-Object @{ n = 'ModuleId'; e = { $_.Values[0]}}, 
+          @{ n = 'ObjectName'; e = { $_.Group | 
+            Select-Object ObjectName -Unique |
+            Where-Object ObjectName -gt "" }},
+          @{ n = 'Parameters'; e = { $_.Group | 
+            Select-Object ParamId, ParamName, DataType, DefaultValue, IsOutput, IsReadOnly |
+            Where-Object ParamName -gt "" }}
+
+        <#
+        # log to database -- requires database-side objects to be created
+        # see .\database\DatabaseSupportObjects.sql
+
+        $writeConnString = "Server=.\SQL2019;Database=Utility;Trusted_Connection=Yes;Integrated Security=SSPI"
+        $writeConn = New-Object System.Data.SqlClient.SqlConnection
+        $writeConn.ConnectionString = $writeConnString
+        $writeConn.Open()
+        $command = $writeConn.CreateCommand()
+        $command.CommandType = [System.Data.CommandType]::StoredProcedure
+        $command.CommandText = "dbo.LogParameters"
+
+        $dt = New-Object System.Data.DataTable;
+        $dt.Columns.Add("ModuleId", [int]) > $null
+        $dt.Columns.Add("ObjectName", [string])> $null
+        $dt.Columns.Add("StatementType",[string])> $null
+        $dt.Columns.Add("ParamId",[int])> $null
+        $dt.Columns.Add("ParamName",[string])> $null
+        $dt.Columns.Add("DataType",[string])> $null
+        $dt.Columns.Add("DefaultValue",[string])> $null
+        $dt.Columns.Add("IsOutput",[System.Boolean])> $null
+        $dt.Columns.Add("IsReadOnly",[System.Boolean]) > $null
+
+        $visitor.Results | Where-Object Id -notin $idsToExclude | ForEach-Object {
+            #System.Data
+            $dr = $dt.NewRow()
+            $dr.ModuleId = $_.ModuleId
+            $dr.ObjectName = $_.ObjectName
+            $dr.StatementType = $_.StatementType
+            $dr.ParamId = $_.ParamId
+            $dr.ParamName = $_.ParamName
+            $dr.DataType = $_.DataType
+            $dr.DefaultValue = $_.DefaultValue
+            $dr.IsOutput = $_.IsOutput
+            $dr.IsReadOnly = $_.IsReadOnly
+            $dt.Rows.Add($dr) > $null
+        }
+
+        $tvp = New-Object System.Data.SqlClient.SqlParameter
+        $tvp.ParameterName = "ParameterSet"
+        $tvp.SqlDBtype = [System.Data.SqlDbType]::Structured
+        $tvp.value = $dt
+        $command.Parameters.Add($tvp) > $null
+        try {
+            $command.ExecuteNonQuery() > $null
+            Write-Host "Wrote to database successfully." -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Database write failed." -ForegroundColor Yellow
+        }
+        #>
     }
 }
 #endregion
+
