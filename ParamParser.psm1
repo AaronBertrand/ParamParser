@@ -28,9 +28,9 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
       })
     }
 
-    hidden [int]$Counter = 0;
+    hidden [int]$Counter  = 0;
     hidden [int]$ModuleId = 0;
-    hidden [int]$ParamId = 1;
+    hidden [int]$ParamId  = 1;
 
     [void]Visit ([Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragment] $fragment)
     {
@@ -38,14 +38,17 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 
         if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements + $this.ModuleTokenTypes))
         {
+            $result = $this.GetResultObject($fragmentType);
+
             # if body of procedure or function, increase the module # and reset param count
             if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements))
             {
                 $this.ModuleId++;
                 $this.ParamId = 1;
+                $result.ParamId = $null;
+                $result.IsOutput = $null;
+                $result.IsReadOnly = $null;
             }
-
-            $result = $this.GetResultObject($fragmentType);
 
             # for any parameter or procedure name, need to loop through all the tokens
             # in the fragment to build up the name, data type, default, etc.
@@ -123,16 +126,16 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
                     $token = $fragment.ScriptTokenStream[$i];
                     if ($token.TokenType -notin (@("WhiteSpace") + $this.CommentTokenTypes))
                     {
-                      if ($seenObject -and $token.TokenType -notin ("Dot","Identifier"))
+                        if ($seenObject -and $token.TokenType -notin ("Dot","Identifier","QuotedIdentifier"))
                         {
                             $seenEndOfFirstObject = $true;
                         }
-                        if ($token.TokenType -in ("Dot", "Identifier") -and !$seenEndOfFirstObject)
+                        if ($token.TokenType -in ("Dot","Identifier","QuotedIdentifier") -and !$seenEndOfFirstObject)
                         {
                             $seenObject = $true;
                             $result.ObjectName += $token.Text.Trim();
                         }
-                    }    
+                    } 
                 } 
             }            
             $result.DataType = $result.DataType.TrimStart();
@@ -284,6 +287,7 @@ Function Get-ParsedParams
             if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
                 $prevObject.ModuleId -eq $thisObject.ModuleId) {
                 $prevObject.ObjectName = $thisObject.ObjectName;
+                $prevObject.StatementType = $thisObject.StatementType
                 $idsToExclude += $i;
             }
         }
@@ -291,11 +295,15 @@ Function Get-ParsedParams
     end {
         # list all properties for all *important* fragments - longer output:
 
-        Write-Output ($visitor.Results | Where-Object {$_.Id -notin $idsToExclude});
+        #Write-Output ($visitor.Results) | Where-Object {$_.Id -notin $idsToExclude};
+
+        # spawn a new GridView window instead
+        
+        $visitor.Results | Where-Object {$_.Id -notin $idsToExclude} | Out-GridView
 
         # grouped and more compact (but still not optimal) output:
         
-        $visitor.Results | Where-Object Id -notin $idsToExclude | Group-Object -Property ModuleId | 
+        <#$visitor.Results | Where-Object Id -notin $idsToExclude | Group-Object -Property ModuleId | 
           Select-Object @{ n = 'ModuleId'; e = { $_.Values[0]}}, 
           @{ n = 'ObjectName'; e = { $_.Group | 
             Select-Object ObjectName -Unique |
@@ -303,7 +311,7 @@ Function Get-ParsedParams
           @{ n = 'Parameters'; e = { $_.Group | 
             Select-Object ParamId, ParamName, DataType, DefaultValue, IsOutput, IsReadOnly |
             Where-Object ParamName -gt "" }}
-
+#>
         <#
         # log to database -- requires database-side objects to be created
         # see .\database\DatabaseSupportObjects.sql
