@@ -1,12 +1,13 @@
 # ParamParser
 
-You're here because you want to know the default values defined for your stored procedures, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple PowerShell script that parses parameter information out of modules stored in a database, database scripts stored in files, or raw scripts inline.
+You're here because you want to know the default values defined for your stored procedures and functions, but SQL Server makes this next to impossible using native functionality. I started this little project to make it easier. It's a simple PowerShell script that parses parameter information out of modules stored in a database, database scripts stored in files, or raw scripts inline.
 
 ### Background
 
 I've begun writing about the journey here:
 
 * [Parse parameter default values using PowerShell - Part 1](https://sqlperformance.com/2020/09/sql-performance/paramparser-1)
+* [Parse parameter default values using PowerShell - Part 2](https://sqlperformance.com/2020/10/sql-performance/paramparser-2)
 
 But to see a quick example of what the current code does, take this (intentionally ridiculous) example:
 
