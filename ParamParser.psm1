@@ -15,16 +15,16 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 
     [PSCustomObject]GetResultObject ([string]$StatementType) {
       return ([PSCustomObject]@{
-          Id = $this.Counter
-          ModuleId = $this.ModuleId
-          ObjectName = $this.ObjectName
+          Id            = $this.Counter
+          ModuleId      = $this.ModuleId
+          ObjectName    = $this.ObjectName
           StatementType = $StatementType
-          ParamId = $this.ParamId
-          ParamName = [string]::Empty
-          DataType = [string]::Empty
-          DefaultValue = [string]::Empty
-          IsOutput = $false
-          IsReadOnly = $false
+          ParamId       = $this.ParamId
+          ParamName     = [string]::Empty
+          DataType      = [string]::Empty
+          DefaultValue  = [string]::Empty
+          IsOutput      = $false
+          IsReadOnly    = $false
       })
     }
 
@@ -317,28 +317,28 @@ Function Get-ParsedParams
         $command.CommandText = "dbo.LogParameters"
 
         $dt = New-Object System.Data.DataTable;
-        $dt.Columns.Add("ModuleId", [int]) > $null
-        $dt.Columns.Add("ObjectName", [string])> $null
-        $dt.Columns.Add("StatementType",[string])> $null
-        $dt.Columns.Add("ParamId",[int])> $null
-        $dt.Columns.Add("ParamName",[string])> $null
-        $dt.Columns.Add("DataType",[string])> $null
-        $dt.Columns.Add("DefaultValue",[string])> $null
-        $dt.Columns.Add("IsOutput",[System.Boolean])> $null
-        $dt.Columns.Add("IsReadOnly",[System.Boolean]) > $null
+        $dt.Columns.Add("ModuleId",      [int])            > $null
+        $dt.Columns.Add("ObjectName",    [string])         > $null
+        $dt.Columns.Add("StatementType", [string])         > $null
+        $dt.Columns.Add("ParamId",       [int])            > $null
+        $dt.Columns.Add("ParamName",     [string])         > $null
+        $dt.Columns.Add("DataType",      [string])         > $null
+        $dt.Columns.Add("DefaultValue",  [string])         > $null
+        $dt.Columns.Add("IsOutput",      [System.Boolean]) > $null
+        $dt.Columns.Add("IsReadOnly",    [System.Boolean]) > $null
 
         $visitor.Results | Where-Object Id -notin $idsToExclude | ForEach-Object {
             #System.Data
-            $dr = $dt.NewRow()
-            $dr.ModuleId = $_.ModuleId
-            $dr.ObjectName = $_.ObjectName
+            $dr               = $dt.NewRow()
+            $dr.ModuleId      = $_.ModuleId
+            $dr.ObjectName    = $_.ObjectName
             $dr.StatementType = $_.StatementType
-            $dr.ParamId = $_.ParamId
-            $dr.ParamName = $_.ParamName
-            $dr.DataType = $_.DataType
-            $dr.DefaultValue = $_.DefaultValue
-            $dr.IsOutput = $_.IsOutput
-            $dr.IsReadOnly = $_.IsReadOnly
+            $dr.ParamId       = $_.ParamId
+            $dr.ParamName     = $_.ParamName
+            $dr.DataType      = $_.DataType
+            $dr.DefaultValue  = $_.DefaultValue
+            $dr.IsOutput      = $_.IsOutput
+            $dr.IsReadOnly    = $_.IsReadOnly
             $dt.Rows.Add($dr) > $null
         }
 

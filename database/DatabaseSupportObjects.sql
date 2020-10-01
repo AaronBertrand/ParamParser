@@ -1,14 +1,14 @@
 CREATE TYPE dbo.ParameterSetTVP AS TABLE
 (
-	ModuleId int,
-	ObjectName nvarchar(515),
-	StatementType nvarchar(255),
-	ParamId int,
-	ParamName nvarchar(255),
-	DataType nvarchar(255),
-	DefaultValue nvarchar(max),
-	IsOutput bit,
-	IsReadOnly bit
+    ModuleId      int,
+    ObjectName    nvarchar(515),
+    StatementType nvarchar(255),
+    ParamId       int,
+    ParamName     nvarchar(255),
+    DataType      nvarchar(255),
+    DefaultValue  nvarchar(max),
+    IsOutput      bit,
+    IsReadOnly    bit
 );
 GO
 
@@ -17,18 +17,18 @@ GO
 
 CREATE TABLE dbo.ParameterLog
 (
-    BatchID bigint,
-	EventTime datetime2 NOT NULL DEFAULT sysdatetime(),
-    ModuleId int,
-	ObjectName nvarchar(515),
-	StatementType nvarchar(255),
-	ParamId int,
-	ParamName nvarchar(255),
-	DataType nvarchar(255),
-	DefaultValue nvarchar(max),
-	IsOutput bit,
-	IsReadOnly bit,
-	INDEX cix_ParameterLog CLUSTERED(BatchID, EventTime)
+    BatchID       bigint,
+    EventTime     datetime2 NOT NULL DEFAULT sysdatetime(),
+    ModuleId      int,
+    ObjectName    nvarchar(515),
+    StatementType nvarchar(255),
+    ParamId       int,
+    ParamName     nvarchar(255),
+    DataType      nvarchar(255),
+    DefaultValue  nvarchar(max),
+    IsOutput      bit,
+    IsReadOnly    bit,
+    INDEX cix_ParameterLog CLUSTERED(BatchID, EventTime)
 );
 GO
 
