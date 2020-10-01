@@ -24,17 +24,17 @@ CREATE PROCEDURE dbo.some_procedure
     SET @c = 6;
 ```
 
-The code here parses through all that garbage and outputs something like this (wrapped for space):
+The code here parses through all that garbage and outputs the following to `Out-GridView`:
 
-![](https://sqlblog.org/wp-content/uploads/2020/10/pp-list-output.png)
+![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-some-proc-output.png)
 
-And another option produces grouped output like this:
+There is also a way to log to a database table (not yet enabled), which will store data like this:
 
-![](https://sqlblog.org/wp-content/uploads/2020/10/pp-grouped-output.png)
+![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-database-logged-output.png)
 
-There is also a way to log to a database table, not yet enabled, which will store data like this:
+As another reference point, here is what a call against the most recent version of `AdventureWorks` looks like:
 
-![](https://sqlblog.org/wp-content/uploads/2020/10/pp-database-logged-output.png)
+![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-advworks-output.png)
 
 ### Dependencies / How to Start
 

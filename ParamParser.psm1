@@ -280,15 +280,28 @@ Function Get-ParsedParams
         $fragment.Accept($visitor);
         # collapse rows
         $idsToExclude = @();
+
         for ($i = 1; $i -le $visitor.Results.Count; $i++) {
             $thisObject = $visitor.Results[$i];
             $prevObject = $visitor.Results[$i-1];
 
+            if ($prevObject.ModuleId -eq 0) {  $prevObject.ModuleId = 1 }
+
             if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
                 $prevObject.ModuleId -eq $thisObject.ModuleId) {
                 $prevObject.ObjectName = $thisObject.ObjectName;
-                $prevObject.StatementType = $thisObject.StatementType
                 $idsToExclude += $i;
+            }
+
+            if ($thisObject.StatementType -eq "ProcedureReference") {
+                if ($visitor.ProcedureStatements -icontains $prevObject.StatementType) {
+                    $prevObject.ObjectName = $thisObject.ObjectName;
+                }
+                $idsToExclude += $i;
+            }
+
+            if (($visitor.ProcedureStatements + $visitor.FunctionStatements) -icontains $prevObject.StatementType) {
+                $prevObject.ModuleId = $thisObject.ModuleId
             }
         }
     }
