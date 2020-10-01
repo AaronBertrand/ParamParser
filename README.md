@@ -7,6 +7,7 @@ You're here because you want to know the default values defined for your stored 
 I've begun writing about the journey here:
 
 * [Parse parameter default values using PowerShell - Part 1](https://sqlperformance.com/2020/09/sql-performance/paramparser-1)
+* [Parse parameter default values using PowerShell - Part 2](https://sqlperformance.com/2020/10/sql-performance/paramparser-2)
 
 But to see a quick example of what the current code does, take this (intentionally ridiculous) example:
 
