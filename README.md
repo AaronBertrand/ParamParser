@@ -26,11 +26,11 @@ CREATE PROCEDURE dbo.some_procedure
 
 The code here parses through all that garbage and outputs the following to `Out-GridView`:
 
-![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-some-proc-output.png)
+![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-some-proc-grid-view.png)
 
 There is also a way to log to a database table (not yet enabled), which will store data like this:
 
-![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-database-logged-output.png)
+![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-database-logged.png)
 
 As another reference point, here is what a call against the most recent version of `AdventureWorks` looks like:
 

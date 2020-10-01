@@ -325,10 +325,11 @@ Function Get-ParsedParams
             Select-Object ParamId, ParamName, DataType, DefaultValue, IsOutput, IsReadOnly |
             Where-Object ParamName -gt "" }}
 #>
-        <#
+        
         # log to database -- requires database-side objects to be created
         # see .\database\DatabaseSupportObjects.sql
 
+        <#
         $writeConnString = "Server=.\SQL2019;Database=Utility;Trusted_Connection=Yes;Integrated Security=SSPI"
         $writeConn = New-Object System.Data.SqlClient.SqlConnection
         $writeConn.ConnectionString = $writeConnString
@@ -354,12 +355,18 @@ Function Get-ParsedParams
             $dr.ModuleId      = $_.ModuleId
             $dr.ObjectName    = $_.ObjectName
             $dr.StatementType = $_.StatementType
-            $dr.ParamId       = $_.ParamId
+            if ($null -ne $_.ParamId) {
+                $dr.ParamId       = $_.ParamId
+            }
             $dr.ParamName     = $_.ParamName
             $dr.DataType      = $_.DataType
             $dr.DefaultValue  = $_.DefaultValue
-            $dr.IsOutput      = $_.IsOutput
-            $dr.IsReadOnly    = $_.IsReadOnly
+            if ($null -ne $_.IsOutput) {
+                $dr.IsOutput      = $_.IsOutput
+            }
+            if ($null -ne $_.IsReadOnly) {
+                $dr.IsReadOnly    = $_.IsReadOnly
+            }
             $dt.Rows.Add($dr) > $null
         }
 
