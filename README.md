@@ -35,7 +35,7 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
 - Clone this repository
 - Run `init.ps1`, which will extract the latest version of `ScriptDom.dll` from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) into the script root
 - To run, in any PS session, `cd` to the repository folder, then:
-  - `Import-Module ./ParamParser.psd1`
+  - `Import-Module ./ParamParser.psm1`
   - `Get-ParsedParams -script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
   - `Get-ParsedParams -file "./dirDemo/dir1/sample1.sql"`
   - `Get-ParsedParams -directory "./dirDemo/"`
