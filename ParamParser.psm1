@@ -15,22 +15,22 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 
     [PSCustomObject]GetResultObject ([string]$StatementType) {
       return ([PSCustomObject]@{
-          Id = $this.Counter
-          ModuleId = $this.ModuleId
-          ObjectName = $this.ObjectName
-          ParamId = $this.ParamId
+          Id            = $this.Counter
+          ModuleId      = $this.ModuleId
+          ObjectName    = $this.ObjectName
           StatementType = $StatementType
-          DataType = [string]::Empty
-          DefaultValue = [string]::Empty
-          IsOutput = $false
-          IsReadOnly = $false
-          ParamName = [string]::Empty
+          ParamId       = $this.ParamId
+          ParamName     = [string]::Empty
+          DataType      = [string]::Empty
+          DefaultValue  = [string]::Empty
+          IsOutput      = $false
+          IsReadOnly    = $false
       })
     }
 
-    hidden [int]$Counter = 0;
+    hidden [int]$Counter  = 0;
     hidden [int]$ModuleId = 0;
-    hidden [int]$ParamId = 0;
+    hidden [int]$ParamId  = 1;
 
     [void]Visit ([Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragment] $fragment)
     {
@@ -38,14 +38,17 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 
         if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements + $this.ModuleTokenTypes))
         {
+            $result = $this.GetResultObject($fragmentType);
+
             # if body of procedure or function, increase the module # and reset param count
             if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements))
             {
                 $this.ModuleId++;
-                $this.ParamId = 0;
+                $this.ParamId = 1;
+                $result.ParamId = $null;
+                $result.IsOutput = $null;
+                $result.IsReadOnly = $null;
             }
-
-            $result = $this.GetResultObject($fragmentType);
 
             # for any parameter or procedure name, need to loop through all the tokens
             # in the fragment to build up the name, data type, default, etc.
@@ -123,16 +126,16 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
                     $token = $fragment.ScriptTokenStream[$i];
                     if ($token.TokenType -notin (@("WhiteSpace") + $this.CommentTokenTypes))
                     {
-                      if ($seenObject -and $token.TokenType -notin ("Dot","Identifier"))
+                        if ($seenObject -and $token.TokenType -notin ("Dot","Identifier","QuotedIdentifier"))
                         {
                             $seenEndOfFirstObject = $true;
                         }
-                        if ($token.TokenType -in ("Dot", "Identifier") -and !$seenEndOfFirstObject)
+                        if ($token.TokenType -in ("Dot","Identifier","QuotedIdentifier") -and !$seenEndOfFirstObject)
                         {
                             $seenObject = $true;
                             $result.ObjectName += $token.Text.Trim();
                         }
-                    }    
+                    } 
                 } 
             }            
             $result.DataType = $result.DataType.TrimStart();
@@ -149,21 +152,42 @@ Function Get-ParsedParams
 {
     [CmdletBinding()]
     param (
-        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "ScriptData")]
+        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "Script")]
         [ValidateNotNullOrEmpty()]
         [string]$Script,
+
         [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "File")]
         [ValidateScript({$PSItem | ForEach-Object {
                 ((Test-Path $_ -PathType Leaf) -and ([System.IO.Path]::GetExtension($_) -ieq ".sql"))
             }
         })]
         [string[]]$File,
+
         [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "Directory")]
         [ValidateScript({$PSItem | ForEach-Object {
                 (Test-Path $_ -PathType Container)
             }
         })]
-        [string[]]$Directory
+        [string[]]$Directory,
+
+        [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
+        [string[]]$ServerInstance,
+        [string[]]$Database,
+        [string]$AuthenticationMode = "Windows", # Or SQL - currently all instances use same auth
+        #[Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
+        #[switch]$Prompt, # to specify _alternate_ Windows auth credentials
+        # if SQL - can I make this mandatory _if_ SQL is specified?
+        [string]$SQLAuthUsername,
+        [SecureString]$SecurePassword,
+        #NotRecommended!:
+        [string]$InsecurePassword,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$GridView = $false,
+        [switch]$Console = $false, # currently logs to console whether you like it or not
+        [switch]$LogToDatabase = $false, # currently assumes Windows Auth for *writing*
+        [string]$LogToDBServerInstance,
+        [string]$LogToDBDatabase
     )
     begin {
         $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
@@ -191,30 +215,162 @@ Function Get-ParsedParams
                     }
                 }
             }
+            "SQLServer" {
+                foreach ($srv in $ServerInstance) {
+                    foreach ($db in $Database) {
+                        $connstring = "Server=$srv; Database=$db;"
+                        $connection = New-Object System.Data.SqlClient.SqlConnection;
+                        switch ($AuthenticationMode) {
+                            "SQL" { 
+                                if ($InsecurePassword -gt "") {
+                                    $PlainPassword = $InsecurePassword # ConvertTo-SecureString $InsecurePassword -AsPlainText -Force
+                                    # $PlainPassword.MakeReadOnly()
+                                }
+                                else {
+                                    $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
+                                    $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                                }
+                                # $connection.Credential = New-Object System.Data.SqlClient.SqlCredential($Username, $PlainPassword)
+                                $connstring += "User ID=$SQLAuthUsername; Password=$PlainPassword;"
+                            }
+                            "Windows" {
+                                $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+                                # if ($Prompt) { # if we can add _alternate_ Windows Auth credentials
+                                                # this may need Invoke-SqlCmd vs. SqlConnection?
+                                    # $cred = Get-Credential -Message "Enter Windows Auth credentials:" # -UserName $Username
+                                    # $cred.Password.MakeReadOnly()
+                                    # $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
+                                    # $connection.Credential = $SQLCred
+                                # }
+                            }
+                        }
+                        $connection.ConnectionString = $connstring;    
+
+                        try {
+                            $connection.Open()
+                            $command = $connection.CreateCommand()
+                            $command.CommandText = @"
+                                SELECT script = OBJECT_DEFINITION(object_id) 
+                                    FROM sys.objects 
+                                    WHERE type IN (N'P',N'IF',N'FN',N'TF');
+"@
+                            $reader = $command.ExecuteReader()
+                            while ($reader.Read()) {
+                                $data = $reader.GetValue(0).ToString()
+                                $Script += ($data + "`nGO`n`n")
+                            }
+                        }
+                        catch {
+                            Write-Host "Database connection failed ($($srv), $($db))." -ForegroundColor Yellow
+                        }
+                    }
+                }
+            }
         }
     }
+
     process {
-        $fragment = $parser.Parse([System.IO.StringReader]::New($script), [ref]$errors);
+        $fragment = $parser.Parse([System.IO.StringReader]::New($Script), [ref]$errors);
         if ($errors.Count -gt 0) {
             throw "$($errors.Count) parsing error(s): $(($errors | ConvertTo-Json))";
         }
         $visitor = [Visitor]::New();
         $fragment.Accept($visitor);
-        # collapse rows
+        # collapse rows and correct ModuleId assignments
         $idsToExclude = @();
+
         for ($i = 1; $i -le $visitor.Results.Count; $i++) {
             $thisObject = $visitor.Results[$i];
             $prevObject = $visitor.Results[$i-1];
 
+            if ($prevObject.ModuleId -eq 0) {  $prevObject.ModuleId = 1 }
+
             if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
                 $prevObject.ModuleId -eq $thisObject.ModuleId) {
-                $prevObject.ObjectName = $thisObject.ObjectName;
-                $idsToExclude += ($i);
+                    $prevObject.ObjectName = $thisObject.ObjectName;
+                    $idsToExclude += $i;
+            }
+
+            if ($thisObject.StatementType -eq "ProcedureReference") {
+                if ($visitor.ProcedureStatements -icontains $prevObject.StatementType) {
+                    $prevObject.ObjectName = $thisObject.ObjectName;
+                }
+                $idsToExclude += $i;
+            }
+
+            if (($visitor.ProcedureStatements + $visitor.FunctionStatements) -icontains $prevObject.StatementType) {
+                $prevObject.ModuleId = $thisObject.ModuleId
             }
         }
     }
     end {
-        Write-Output ($visitor.Results | Where-Object {$_.Id -notin $idsToExclude});
+        if (($GridView -eq $false -and $LogToDatabase -eq $false) -or ($Console -eq $true)) {
+            # list all properties for all *important* fragments - longer output:
+            Write-Output ($visitor.Results) | Where-Object {$_.Id -notin $idsToExclude};
+        }
+
+        if ($GridView -eq $true) {
+            # spawn a new GridView window instead, much more concise:        
+            $visitor.Results | Where-Object {$_.Id -notin $idsToExclude} | Out-GridView
+        }
+
+        if ($LogToDatabase -eq $true) {
+            # log to database -- requires database-side objects to be created
+            # see .\database\DatabaseSupportObjects.sql
+
+            $writeConnString = "Server=$LogToDBServerInstance;Database=$LogToDBDatabase;Trusted_Connection=Yes;Integrated Security=SSPI"
+            $writeConn = New-Object System.Data.SqlClient.SqlConnection
+            $writeConn.ConnectionString = $writeConnString
+            $writeConn.Open()
+            $command = $writeConn.CreateCommand()
+            $command.CommandType = [System.Data.CommandType]::StoredProcedure
+            $command.CommandText = "dbo.LogParameters"
+
+            $dt = New-Object System.Data.DataTable;
+            $dt.Columns.Add("ModuleId",      [int])            > $null
+            $dt.Columns.Add("ObjectName",    [string])         > $null
+            $dt.Columns.Add("StatementType", [string])         > $null
+            $dt.Columns.Add("ParamId",       [int])            > $null
+            $dt.Columns.Add("ParamName",     [string])         > $null
+            $dt.Columns.Add("DataType",      [string])         > $null
+            $dt.Columns.Add("DefaultValue",  [string])         > $null
+            $dt.Columns.Add("IsOutput",      [System.Boolean]) > $null
+            $dt.Columns.Add("IsReadOnly",    [System.Boolean]) > $null
+
+            $visitor.Results | Where-Object Id -notin $idsToExclude | ForEach-Object {
+                #System.Data
+                $dr               = $dt.NewRow()
+                $dr.ModuleId      = $_.ModuleId
+                $dr.ObjectName    = $_.ObjectName
+                $dr.StatementType = $_.StatementType
+                if ($null -ne $_.ParamId) {
+                    $dr.ParamId       = $_.ParamId
+                }
+                $dr.ParamName     = $_.ParamName
+                $dr.DataType      = $_.DataType
+                $dr.DefaultValue  = $_.DefaultValue
+                if ($null -ne $_.IsOutput) {
+                    $dr.IsOutput      = $_.IsOutput
+                }
+                if ($null -ne $_.IsReadOnly) {
+                    $dr.IsReadOnly    = $_.IsReadOnly
+                }
+                $dt.Rows.Add($dr) > $null
+            }
+
+            $tvp = New-Object System.Data.SqlClient.SqlParameter
+            $tvp.ParameterName = "ParameterSet"
+            $tvp.SqlDBtype = [System.Data.SqlDbType]::Structured
+            $tvp.value = $dt
+            $command.Parameters.Add($tvp) > $null
+            try {
+                $command.ExecuteNonQuery() > $null
+                Write-Host "Wrote to database successfully." -ForegroundColor Green
+            }
+            catch {
+                Write-Host "Database write failed." -ForegroundColor Yellow
+            }
+        }
     }
 }
 #endregion
