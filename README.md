@@ -32,7 +32,7 @@ There is also a way to log to a database table (not yet enabled), which will sto
 
 ![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-database-logged.png)
 
-As another reference point, here is what a call against the most recent version of `AdventureWorks` looks like:
+As another reference point, here is what a call against the most recent version of `AdventureWorks` looks like (not quite as interesting as I thought it would be, since they don't use a lot of default values for parameters):
 
 ![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-advworks-output.png)
 
@@ -45,34 +45,44 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
 - To run, in any PS session, `cd` to the repository folder, then:
   - `Import-Module ./ParamParser.psm1`
     - If testing local changes, add `-Force` to overwrite
-  - For a raw script:
-    - `Get-ParsedParams -Script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
-  - For one or more files:
-    - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql"`
-    - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql", "./dirDemo/dir2/sample2.sql"`
-  - For one or more folders:
-    - `Get-ParsedParams -Directory "./dirDemo/"`
-    - `Get-ParsedParams -Directory "./dirDemo/dir1/", "./dirDemo/dir2/"`
-  - For SQL Server:
-    - Using current Windows Auth credentials:
-      - `Get-ParsedParams -ServerInstance "server\instance" -Database "db" -AuthenticationMode "Windows"`
-      - `Get-ParsedParams -ServerInstance "server\instance" -Database "db"` (Windows is the default)
-    - To pass in a SecureString SQL Auth password (assuming you'd get securestring from another source):
-      - `$password = "password" | ConvertTo-SecureString -AsPlainText -Force`
-      - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -SecurePassword $password`
-    - To pass in a plaintext SQL Auth password:
-      - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -Username "username" -InsecurePassword "password"`
-    - For multiple instances or databases (usually you won't provide multiple of both at the same time):
-      - `Get-ParsedParams -ServerInstance "server1","server2" -Database "db"`
-      - `Get-ParsedParams -ServerInstance "server" -Database "db1","db2"`
-- For unit testing, install Pester
-  - `Install-Module Pester`
-  - This will allow you to execute unit tests for validation during development efforts
-  - Execute tests: `Invoke-Pester -Path ./tests/*`
+  - **For input:**
+    - To pass in a raw script:
+      - `Get-ParsedParams -Script "CREATE PROCEDURE dbo.foo @bar int = 1 AS PRINT 1;"`
+    - To pull from one or more files:
+      - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql"`
+      - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql", "./dirDemo/dir2/sample2.sql"`
+    - To pull from one or more directories:
+      - `Get-ParsedParams -Directory "./dirDemo/"`
+      - `Get-ParsedParams -Directory "./dirDemo/dir1/", "./dirDemo/dir2/"`
+    - To pull from one or more SQL Server databases:
+      - Using current Windows Auth credentials:
+        - `Get-ParsedParams -ServerInstance "server\instance" -Database "db" -AuthenticationMode "Windows"`
+        - `Get-ParsedParams -ServerInstance "server\instance" -Database "db"` (Windows is the default)
+      - To pass in a SecureString SQL Authentication password (assuming you'd get SecureString from another source):
+        - `$password = "password" | ConvertTo-SecureString -AsPlainText -Force`
+        - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -SQLAuthUsername "username" -SecurePassword $password`
+      - To pass in a plaintext SQL Authentication password:
+        - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -SQLAuthUsername "username" -InsecurePassword "password"`
+      - For multiple instances or databases (usually you won't provide multiple of both at the same time):
+        - `Get-ParsedParams -ServerInstance "server1","server2" -Database "db"`
+        - `Get-ParsedParams -ServerInstance "server" -Database "db1","db2"`
+  - **For output:**
+    - To get the output in `Out-GridView`:
+      - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -GridView`
+    - To get the output only in the console:
+      - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -Console`
+    - To also log the output to a database, run `.\database\DatabaseSupportObjects.sql` somewhere, and then:
+      - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -LogToDatabase -LogToDBServerInstance "server" -LogToDBDatabase "database"`
+      - this assumes you can write using current Windows Authentication credentials
+    - If you don't specify `-GridView` or `-LogToDatabase`, you get `-Console`
+  - **For unit testing**, install Pester:
+    - `Install-Module Pester`
+    - This will allow you to execute unit tests for validation during development efforts
+    - Execute tests: `Invoke-Pester -Path ./tests/*`
 
 ### What does it do
 
-For now, it just outputs a `PSCustomObject` to the console using `Write-Output` and `Select-Object` (logging to a database has been commented out until I figure out how to better automate that).
+For now, it just outputs a `PSCustomObject` to the console using `Write-Output`, but you can optionally (a) output to `Out-GridView` and/or (b) log to a database.
 
 I showed abbreviated samples above, but the elements in the `Write-Output` display are:
 
@@ -83,7 +93,7 @@ I showed abbreviated samples above, but the elements in the `Write-Output` displ
 - **`ObjectName`**: 
   - The one- or two-part name of the object.
 - **`StatementType`**: 
-  - Whether it's `create`/`alter`/`create or alter` | `procedure` / `function`. When pulling from a database, this will always be `create`.
+  - Indicates `create`/`alter`/`create or alter` | `procedure` / `function`. When pulling from a database, this will always be a `create` statement.
 - **`ParamId`**: 
   - A counter that increments for every new parameter we encounter inside a module.
 - **`ParamName`**: 
