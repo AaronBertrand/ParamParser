@@ -126,9 +126,9 @@ Basically, more sources, more targets, more options.
 - inject metadata in output so it better reflects source 
   - say, if, two different files (or even different batches in the same file) contain procedures with same name but different interface
   - or if two databases contain the same procedure name, or two instances contain similar databases, etc.
-- need to define output target
-  - output to console, out-csv, out-xml, out-json, to pipeline, or to a file
-  - make it easier to use .\database\DatabaseSupportObjects.sql to log each parse batch
+- need more output targets
+  - out-csv, out-xml, out-json, to pipeline, or to a file
+  - make it easier to use .\database\DatabaseSupportObjects.sql to log each parse batch - currently quite manual
 - cleaner error handling (e.g. for a typo in file/folder path)
   - also make error handling for database connections optionally more verbose for diagnostics
-- maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (Azure function)
+- maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (e.g. Azure function)
