@@ -8,7 +8,8 @@ CREATE TYPE dbo.ParameterSetTVP AS TABLE
     DataType      nvarchar(255),
     DefaultValue  nvarchar(max),
     IsOutput      bit,
-    IsReadOnly    bit
+    IsReadOnly    bit,
+    Source        nvarchar(max)
 );
 GO
 
@@ -28,17 +29,18 @@ CREATE TABLE dbo.ParameterLog
     DefaultValue  nvarchar(max),
     IsOutput      bit,
     IsReadOnly    bit,
-    INDEX cix_ParameterLog CLUSTERED(BatchID, EventTime)
+    Source        nvarchar(max)
 );
 GO
-
+CREATE CLUSTERED INDEX cix_ParameterLog ON dbo.ParameterLog(BatchID, EventTime, ModuleId, ParamId);
+GO
 CREATE PROCEDURE dbo.LogParameters
 	@ParameterSet dbo.ParameterSetTVP READONLY
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE @BatchID bigint = NEXT VALUE FOR dbo.ParameterBatchID;
+	DECLARE @BatchID bigint = NEXT VALUE FOR dbo.ParameterLogBatchID;
 
 	INSERT dbo.ParameterLog
 	(
@@ -51,7 +53,8 @@ BEGIN
 	  DataType, 
 	  DefaultValue, 
 	  IsOutput, 
-	  IsReadOnly
+	  IsReadOnly,
+	  Source
 	)
 	SELECT 
 	  @BatchId, 
@@ -63,8 +66,9 @@ BEGIN
 	  DataType, 
 	  DefaultValue, 
 	  IsOutput, 
-	  IsReadOnly
+	  IsReadOnly,
+	  Source
 	FROM @ParameterSet 
-	ORDER BY ModuleId, ParamId, ParamName;
+	ORDER BY ModuleId, ParamId;
 END
 GO
