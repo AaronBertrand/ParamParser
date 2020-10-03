@@ -221,25 +221,26 @@ Function Get-ParsedParams
                 }
             }
             "SQLServer" {
-                foreach ($srv in $ServerInstance) {
-                    foreach ($db in $Database) {
-                        $connection = Get-SQLConnection $srv $db $AuthenticationMode $SQLAuthUsername $SecurePassword $InsecurePassword
+                foreach ($ServerInstanceName in $ServerInstance) {
+                    foreach ($DatabaseName in $Database) {
+                        $Connection = Get-SQLConnection $ServerInstanceName $DatabaseName $AuthenticationMode `
+                                                        $SQLAuthUsername $SecurePassword $InsecurePassword
                         try {
-                            $connection.Open()
-                            $command = $connection.CreateCommand()
-                            $command.CommandText = @"
+                            $Connection.Open()
+                            $Command = $Connection.CreateCommand()
+                            $Command.CommandText = @"
                                 SELECT script = OBJECT_DEFINITION(object_id) 
                                     FROM sys.objects 
                                     WHERE type IN (N'P',N'IF',N'FN',N'TF');
 "@
-                            $reader = $command.ExecuteReader()
-                            while ($reader.Read()) {
-                                $data = $reader.GetValue(0).ToString()
-                                $Script += ($data + "`nGO`n`n")
+                            $Reader = $Command.ExecuteReader()
+                            while ($Reader.Read()) {
+                                $Data = $Reader.GetValue(0).ToString()
+                                $Script += ($Data + "`nGO`n`n")
                             }
                         }
                         catch {
-                            Write-Host "Database connection failed ($($srv), $($db)).`n$PSItem" -ForegroundColor Yellow
+                            Write-Host "Database connection failed ($($ServerInstanceName), $($DatabaseName)).`n$PSItem" -ForegroundColor Yellow
                         }
                         finally {
                             $connection.Close()
@@ -298,17 +299,17 @@ Function Get-ParsedParams
         if ($LogToDatabase -eq $true) {
             # log to database -- requires database-side objects to be created
             # see .\database\DatabaseSupportObjects.sql
-            $writeConnection = Get-SQLConnection $LogToDBServerInstance $LogToDBDatabase $LogToDBAuthenticationMode `
+            $WriteConnection = Get-SQLConnection $LogToDBServerInstance $LogToDBDatabase $LogToDBAuthenticationMode `
                                                  $LogToDBSQLAuthUsername $LogToDBSecurePassword $LogToDBInsecurePassword
 
             try {
-                $writeConnection.Open()
-                $writeCommand = $writeConnection.CreateCommand()
-                $writeCommand.CommandType = [System.Data.CommandType]::StoredProcedure
-                $writeCommand.CommandText = "dbo.LogParameters"
+                $WriteConnection.Open()
+                $WriteCommand = $WriteConnection.CreateCommand()
+                $WriteCommand.CommandType = [System.Data.CommandType]::StoredProcedure
+                $WriteCommand.CommandText = "dbo.LogParameters"
 
                 $dt = New-Object System.Data.DataTable;
-                $dt.Columns.Add("ModuleId",      [int])            > $null
+                $dt.Columns.Add("ModuleId",      [int])            #> $null
                 $dt.Columns.Add("ObjectName",    [string])         > $null
                 $dt.Columns.Add("StatementType", [string])         > $null
                 $dt.Columns.Add("ParamId",       [int])            > $null
@@ -341,21 +342,21 @@ Function Get-ParsedParams
                 $tvp = New-Object System.Data.SqlClient.SqlParameter
                 $tvp.ParameterName = "ParameterSet"
                 $tvp.SqlDBtype = [System.Data.SqlDbType]::Structured
-                $tvp.value = $dt
-                $writeCommand.Parameters.Add($tvp) > $null
+                $tvp.Value = $dt
+                $WriteCommand.Parameters.Add($tvp) > $null
                 try {
-                    $writeCommand.ExecuteNonQuery() > $null
+                    $WriteCommand.ExecuteNonQuery() > $null
                     Write-Host "Wrote to database successfully." -ForegroundColor Green
                 }
                 catch {
                     Write-Host "Database write failed. $PSItem" -ForegroundColor Yellow
                 }
                 finally {
-                    $writeConnection.Close()
+                    $WriteConnection.Close()
                 }
             }
             catch {
-                Write-Host "Write database connection failed ($($LogToDBServerInstance), $($LogToDBDatabase)) `n$PSItem." -ForegroundColor Yellow
+                Write-Host "Write database connection failed ($($LogToDBServerInstance), $($LogToDBDatabase))`n$PSItem." -ForegroundColor Yellow
             }
         }
     }
@@ -371,24 +372,24 @@ Function Get-SQLConnection
     [string]$InsecurePW
 )
 {
-    $conn = New-Object System.Data.SqlClient.SqlConnection
+    $Conn = New-Object System.Data.SqlClient.SqlConnection
     
-    $connectionString = "Server=$($ServerInstance); Database=$($Database);"
+    $ConnectionString = "Server=$($ServerInstance); Database=$($Database);"
     if ($AuthMode -eq "SQL" -or $SQLAuthUsername -gt "") {
         if ($InsecurePW -gt "") {
             $PlainPW = $InsecurePW
         }
         else {
-            $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePW)
+            $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePW)
             $PlainPW = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
         }
-        $connectionString += "User ID=$($SQLAuthUsername); Password=$($PlainPW);"
+        $ConnectionString += "User ID=$($SQLAuthUsername); Password=$($PlainPW);"
     }
     if ($AuthMode -eq "Windows") {
-        $connectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+        $ConnectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
     }
-    Write-Host $connectionString
-    $conn.ConnectionString = $connectionString; 
-    return $conn
+    Write-Host $ConnectionString
+    $Conn.ConnectionString = $ConnectionString; 
+    return $Conn
 }
 #endregion
