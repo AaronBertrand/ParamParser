@@ -34,11 +34,12 @@ There is also a way to log to a database table (not yet enabled), which will sto
 
 ### Dependencies / How to Start
 
-You need to have the latest ScriptDom.dll locally in order to use the related classes here, but we can't legally give you that file. After that, you can import the ParamParser module, and then run `Get-ParsedParams` with a string, a database, a file, or a directory. 
+You need to have the latest `ScriptDom.dll` locally in order to use the related classes here, but we can't share that file here, so we help you download it from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) to your script root. After that, you can import the ParamParser module, and then run `Get-ParsedParams` with a raw string, one or more database sources, one or more files, or one or more directories. 
 
 - Clone this repository
-- Run `init.ps1`, which will extract the latest version of `ScriptDom.dll` from [here](https://docs.microsoft.com/en-us/sql/tools/sqlpackage-download) into the script root
-- To run, in any PS session, `cd` to the repository folder, then:
+- In any PS session, `cd` to the repository folder
+- Run `init.ps1`, which will extract the latest version of `ScriptDom.dll` and register the DLL
+- To run:
   - `Import-Module ./ParamParser.psm1`
     - If testing local changes, add `-Force` to overwrite
   - **For input:**
