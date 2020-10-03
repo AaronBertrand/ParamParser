@@ -25,16 +25,28 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
           DefaultValue  = [string]::Empty
           IsOutput      = $false
           IsReadOnly    = $false
+          Source        = [string]::Empty
       })
     }
 
     hidden [int]$Counter  = 0;
     hidden [int]$ModuleId = 0;
     hidden [int]$ParamId  = 1;
+    hidden [string]$Source = [string]::Empty
 
     [void]Visit ([Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragment] $fragment)
     {
         $fragmentType = $fragment.GetType().Name;
+
+        # if this is an injected PRINT statement, it contains the source for this statement
+        if ($fragmentType -eq "StringLiteral")
+        {
+            $token = $fragment.ScriptTokenStream[$fragment.FirstTokenIndex]
+            if ($token.Text -like "'ParamParser.Source*")
+            {
+                $this.Source = $token.Text.Substring(21, $token.Text.Length-22)
+            }
+        }
 
         if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements + $this.ModuleTokenTypes))
         {
@@ -48,6 +60,7 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
                 $result.ParamId    = $null;
                 $result.IsOutput   = $null;
                 $result.IsReadOnly = $null;
+                $result.Source = $this.Source;
             }
 
             # for any parameter or procedure name, need to loop through all the tokens
@@ -203,20 +216,14 @@ Function Get-ParsedParams
             "File" {
                 foreach ($item in $File) {
                     $data = (Get-Content -Path $item -Raw)
-                    if (-not $data.EndsWith("GO")) {
-                        $data += "`nGO"
-                    }
-                    $Script += ($data + "`n`n")
+                    $Script += ("PRINT 'ParamParser.Source: $($item)'`nGO`n`n$($data)`nGO`n`n" )
                 }
             }
             "Directory" {
                 foreach ($item in $Directory) {
                     Get-ChildItem -Path $item -Filter "*.sql" -Recurse | ForEach-Object {
                         $data = (Get-Content -Path $_.FullName -Raw)
-                        if (-not $data.EndsWith("GO")) {
-                            $data += "`nGO"
-                        }
-                        $Script += ($data + "`n`n")
+                        $Script += ("PRINT 'ParamParser.Source: $($_.FullName)'`nGO`n`n$($data)`nGO`n`n" )
                     }
                 }
             }
@@ -236,14 +243,14 @@ Function Get-ParsedParams
                             $Reader = $Command.ExecuteReader()
                             while ($Reader.Read()) {
                                 $Data = $Reader.GetValue(0).ToString()
-                                $Script += ($Data + "`nGO`n`n")
+                                $Script += ("PRINT 'ParamParser.Source: [$($ServerInstanceName)].[$($DatabaseName)]'`nGO`n`n$($data)`nGO`n`n" )
                             }
                         }
                         catch {
                             Write-Host "Database connection failed ($($ServerInstanceName), $($DatabaseName)).`n$PSItem" -ForegroundColor Yellow
                         }
                         finally {
-                            $connection.Close()
+                            $Connection.Close()
                         }        
                     }
                 }
@@ -309,7 +316,7 @@ Function Get-ParsedParams
                 $WriteCommand.CommandText = "dbo.LogParameters"
 
                 $dt = New-Object System.Data.DataTable;
-                $dt.Columns.Add("ModuleId",      [int])            #> $null
+                $dt.Columns.Add("ModuleId",      [int])            > $null
                 $dt.Columns.Add("ObjectName",    [string])         > $null
                 $dt.Columns.Add("StatementType", [string])         > $null
                 $dt.Columns.Add("ParamId",       [int])            > $null
@@ -318,6 +325,7 @@ Function Get-ParsedParams
                 $dt.Columns.Add("DefaultValue",  [string])         > $null
                 $dt.Columns.Add("IsOutput",      [System.Boolean]) > $null
                 $dt.Columns.Add("IsReadOnly",    [System.Boolean]) > $null
+                $dt.Columns.Add("Source",        [string])         > $null
 
                 $visitor.Results | Where-Object Id -notin $idsToExclude | ForEach-Object {
                     $dr                = $dt.NewRow()
@@ -336,6 +344,7 @@ Function Get-ParsedParams
                     if ($null -ne $_.IsReadOnly) {
                         $dr.IsReadOnly = $_.IsReadOnly
                     }
+                    $dr.Source         = $_.Source
                     $dt.Rows.Add($dr) > $null
                 }
 
@@ -388,7 +397,6 @@ Function Get-SQLConnection
     if ($AuthMode -eq "Windows") {
         $ConnectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
     }
-    Write-Host $ConnectionString
     $Conn.ConnectionString = $ConnectionString; 
     return $Conn
 }

@@ -109,6 +109,8 @@ I showed abbreviated samples above, but the elements in the `Write-Output` displ
   - Whether the parameter is defined as `OUT`/`OUTPUT`.
 - **`IsReadOnly`**: 
   - Whether the parameter is read only (only valid for table-valued parameters).
+- **`Source`**:
+  - Where this object came from (in case multiple files or databases contain the same object name).
 
 ### Shout-Outs
 
@@ -126,9 +128,6 @@ I certainly can't take much credit here; there's already a big, growing list of 
 Basically, more sources, more targets, more options.
 
 - need to make it so it takes shorthand for a subset of databases, like all user databases on an instance
-- inject metadata in output so it better reflects source 
-  - say, if, two different files (or even different batches in the same file) contain procedures with same name but different interface
-  - or if two databases contain the same procedure name, or two instances contain similar databases, etc.
 - need more output targets
   - out-csv, out-xml, out-json, to pipeline, or to a file
   - make it easier to use .\database\DatabaseSupportObjects.sql to log each parse batch - currently quite manual
