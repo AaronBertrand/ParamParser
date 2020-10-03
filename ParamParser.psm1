@@ -223,23 +223,7 @@ Function Get-ParsedParams
             "SQLServer" {
                 foreach ($srv in $ServerInstance) {
                     foreach ($db in $Database) {
-                        $ConnectionString = "Server=$srv; Database=$db;"
-                        $connection = New-Object System.Data.SqlClient.SqlConnection;
-                        if ($AuthenticationMode -eq "SQL" -or $SQLAuthUsername -gt "") {
-                            if ($InsecurePassword -gt "") {
-                                $PlainPassword = $InsecurePassword
-                            }
-                            else {
-                                $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
-                                $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-                            }
-                            $ConnectionString += "User ID=$SQLAuthUsername; Password=$PlainPassword;"
-                        }
-                        if ($AuthenticationMode -eq "Windows") {
-                            $ConnectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
-                        }
-                        $connection.ConnectionString = $ConnectionString;    
-
+                        $connection = Get-SQLConnection $srv $db $AuthenticationMode $SQLAuthUsername $SecurePassword $InsecurePassword
                         try {
                             $connection.Open()
                             $command = $connection.CreateCommand()
@@ -314,22 +298,8 @@ Function Get-ParsedParams
         if ($LogToDatabase -eq $true) {
             # log to database -- requires database-side objects to be created
             # see .\database\DatabaseSupportObjects.sql
-            $writeConnectionString = "Server=$LogToDBServerInstance; Database=$LogToDBDatabase;"
-            $writeConnection = New-Object System.Data.SqlClient.SqlConnection;
-            if ($LogToDBAuthenticationMode -eq "SQL" -or $LogToDBSQLAuthUsername -gt "") {
-                if ($LogToTBInsecurePassword -gt "") {
-                    $LogToDBPlainPassword = $LogToDBInsecurePassword
-                }
-                else {
-                    $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($LogToDBSecurePassword)
-                    $LogToDBPlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-                }
-                $writeConnectionString += "User ID=$LogToDBSQLAuthUsername; Password=$LogToDBPlainPassword;"
-            }
-            if ($LogToDBAuthenticationMode -eq "Windows") {
-                $writeConnectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
-            }
-            $writeConnection.ConnectionString = $ConnectionString;    
+            $writeConnection = Get-SQLConnection $LogToDBServerInstance $LogToDBDatabase $LogToDBAuthenticationMode `
+                                                 $LogToDBSQLAuthUsername $LogToDBSecurePassword $LogToDBInsecurePassword
 
             try {
                 $writeConnection.Open()
@@ -389,5 +359,36 @@ Function Get-ParsedParams
             }
         }
     }
+}
+
+Function Get-SQLConnection
+(
+    [string]$ServerInstance, 
+    [string]$Database, 
+    [string]$AuthMode, 
+    [string]$SQLAuthUsername, 
+    [SecureString]$SecurePW, 
+    [string]$InsecurePW
+)
+{
+    $conn = New-Object System.Data.SqlClient.SqlConnection
+    
+    $connectionString = "Server=$($ServerInstance); Database=$($Database);"
+    if ($AuthMode -eq "SQL" -or $SQLAuthUsername -gt "") {
+        if ($InsecurePW -gt "") {
+            $PlainPW = $InsecurePW
+        }
+        else {
+            $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePW)
+            $PlainPW = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+        }
+        $connectionString += "User ID=$($SQLAuthUsername); Password=$($PlainPW);"
+    }
+    if ($AuthMode -eq "Windows") {
+        $connectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+    }
+    Write-Host $connectionString
+    $conn.ConnectionString = $connectionString; 
+    return $conn
 }
 #endregion
