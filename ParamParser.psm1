@@ -257,6 +257,9 @@ Function Get-ParsedParams
                         catch {
                             Write-Host "Database connection failed ($($srv), $($db)).`n$PSItem" -ForegroundColor Yellow
                         }
+                        finally {
+                            $connection.Close()
+                        }        
                     }
                 }
             }
@@ -376,6 +379,9 @@ Function Get-ParsedParams
                 }
                 catch {
                     Write-Host "Database write failed. $PSItem" -ForegroundColor Yellow
+                }
+                finally {
+                    $writeConnection.Close()
                 }
             }
             catch {
