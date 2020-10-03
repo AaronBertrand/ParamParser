@@ -44,9 +44,9 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
             if ($fragmentType -iin ($this.ProcedureStatements + $this.FunctionStatements))
             {
                 $this.ModuleId++;
-                $this.ParamId = 1;
-                $result.ParamId = $null;
-                $result.IsOutput = $null;
+                $this.ParamId      = 1;
+                $result.ParamId    = $null;
+                $result.IsOutput   = $null;
                 $result.IsReadOnly = $null;
             }
 
@@ -185,9 +185,14 @@ Function Get-ParsedParams
         [Parameter(Mandatory = $false)]
         [switch]$GridView = $false,
         [switch]$Console = $false, # currently logs to console whether you like it or not
-        [switch]$LogToDatabase = $false, # currently assumes Windows Auth for *writing*
+        [switch]$LogToDatabase = $false,
         [string]$LogToDBServerInstance,
-        [string]$LogToDBDatabase
+        [string]$LogToDBDatabase,
+        [string]$LogToDBAuthenticationMode = "Windows",
+        [string]$LogToDBSQLAuthUsername,
+        [SecureString]$LogToDBSecurePassword,
+        #NotRecommended!:
+        [string]$LogToDBInsecurePassword
     )
     begin {
         $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
@@ -218,33 +223,22 @@ Function Get-ParsedParams
             "SQLServer" {
                 foreach ($srv in $ServerInstance) {
                     foreach ($db in $Database) {
-                        $connstring = "Server=$srv; Database=$db;"
+                        $ConnectionString = "Server=$srv; Database=$db;"
                         $connection = New-Object System.Data.SqlClient.SqlConnection;
-                        switch ($AuthenticationMode) {
-                            "SQL" { 
-                                if ($InsecurePassword -gt "") {
-                                    $PlainPassword = $InsecurePassword # ConvertTo-SecureString $InsecurePassword -AsPlainText -Force
-                                    # $PlainPassword.MakeReadOnly()
-                                }
-                                else {
-                                    $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
-                                    $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-                                }
-                                # $connection.Credential = New-Object System.Data.SqlClient.SqlCredential($Username, $PlainPassword)
-                                $connstring += "User ID=$SQLAuthUsername; Password=$PlainPassword;"
+                        if ($AuthenticationMode -eq "SQL" -or $SQLAuthUsername -gt "") {
+                            if ($InsecurePassword -gt "") {
+                                $PlainPassword = $InsecurePassword
                             }
-                            "Windows" {
-                                $connstring += "Trusted_Connection=Yes; Integrated Security=SSPI;"
-                                # if ($Prompt) { # if we can add _alternate_ Windows Auth credentials
-                                                # this may need Invoke-SqlCmd vs. SqlConnection?
-                                    # $cred = Get-Credential -Message "Enter Windows Auth credentials:" # -UserName $Username
-                                    # $cred.Password.MakeReadOnly()
-                                    # $SQLCred = New-Object System.Data.SqlClient.SqlCredential($cred.UserName, $cred.Password)
-                                    # $connection.Credential = $SQLCred
-                                # }
+                            else {
+                                $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
+                                $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
                             }
+                            $ConnectionString += "User ID=$SQLAuthUsername; Password=$PlainPassword;"
                         }
-                        $connection.ConnectionString = $connstring;    
+                        if ($AuthenticationMode -eq "Windows") {
+                            $ConnectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+                        }
+                        $connection.ConnectionString = $ConnectionString;    
 
                         try {
                             $connection.Open()
@@ -261,7 +255,7 @@ Function Get-ParsedParams
                             }
                         }
                         catch {
-                            Write-Host "Database connection failed ($($srv), $($db))." -ForegroundColor Yellow
+                            Write-Host "Database connection failed ($($srv), $($db)).`n$PSItem" -ForegroundColor Yellow
                         }
                     }
                 }
@@ -317,58 +311,75 @@ Function Get-ParsedParams
         if ($LogToDatabase -eq $true) {
             # log to database -- requires database-side objects to be created
             # see .\database\DatabaseSupportObjects.sql
-
-            $writeConnString = "Server=$LogToDBServerInstance;Database=$LogToDBDatabase;Trusted_Connection=Yes;Integrated Security=SSPI"
-            $writeConn = New-Object System.Data.SqlClient.SqlConnection
-            $writeConn.ConnectionString = $writeConnString
-            $writeConn.Open()
-            $command = $writeConn.CreateCommand()
-            $command.CommandType = [System.Data.CommandType]::StoredProcedure
-            $command.CommandText = "dbo.LogParameters"
-
-            $dt = New-Object System.Data.DataTable;
-            $dt.Columns.Add("ModuleId",      [int])            > $null
-            $dt.Columns.Add("ObjectName",    [string])         > $null
-            $dt.Columns.Add("StatementType", [string])         > $null
-            $dt.Columns.Add("ParamId",       [int])            > $null
-            $dt.Columns.Add("ParamName",     [string])         > $null
-            $dt.Columns.Add("DataType",      [string])         > $null
-            $dt.Columns.Add("DefaultValue",  [string])         > $null
-            $dt.Columns.Add("IsOutput",      [System.Boolean]) > $null
-            $dt.Columns.Add("IsReadOnly",    [System.Boolean]) > $null
-
-            $visitor.Results | Where-Object Id -notin $idsToExclude | ForEach-Object {
-                #System.Data
-                $dr               = $dt.NewRow()
-                $dr.ModuleId      = $_.ModuleId
-                $dr.ObjectName    = $_.ObjectName
-                $dr.StatementType = $_.StatementType
-                if ($null -ne $_.ParamId) {
-                    $dr.ParamId       = $_.ParamId
+            $writeConnectionString = "Server=$LogToDBServerInstance; Database=$LogToDBDatabase;"
+            $writeConnection = New-Object System.Data.SqlClient.SqlConnection;
+            if ($LogToDBAuthenticationMode -eq "SQL" -or $LogToDBSQLAuthUsername -gt "") {
+                if ($LogToTBInsecurePassword -gt "") {
+                    $LogToDBPlainPassword = $LogToDBInsecurePassword
                 }
-                $dr.ParamName     = $_.ParamName
-                $dr.DataType      = $_.DataType
-                $dr.DefaultValue  = $_.DefaultValue
-                if ($null -ne $_.IsOutput) {
-                    $dr.IsOutput      = $_.IsOutput
+                else {
+                    $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($LogToDBSecurePassword)
+                    $LogToDBPlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
                 }
-                if ($null -ne $_.IsReadOnly) {
-                    $dr.IsReadOnly    = $_.IsReadOnly
-                }
-                $dt.Rows.Add($dr) > $null
+                $writeConnectionString += "User ID=$LogToDBSQLAuthUsername; Password=$LogToDBPlainPassword;"
             }
+            if ($LogToDBAuthenticationMode -eq "Windows") {
+                $writeConnectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+            }
+            $writeConnection.ConnectionString = $ConnectionString;    
 
-            $tvp = New-Object System.Data.SqlClient.SqlParameter
-            $tvp.ParameterName = "ParameterSet"
-            $tvp.SqlDBtype = [System.Data.SqlDbType]::Structured
-            $tvp.value = $dt
-            $command.Parameters.Add($tvp) > $null
             try {
-                $command.ExecuteNonQuery() > $null
-                Write-Host "Wrote to database successfully." -ForegroundColor Green
+                $writeConnection.Open()
+                $writeCommand = $writeConnection.CreateCommand()
+                $writeCommand.CommandType = [System.Data.CommandType]::StoredProcedure
+                $writeCommand.CommandText = "dbo.LogParameters"
+
+                $dt = New-Object System.Data.DataTable;
+                $dt.Columns.Add("ModuleId",      [int])            > $null
+                $dt.Columns.Add("ObjectName",    [string])         > $null
+                $dt.Columns.Add("StatementType", [string])         > $null
+                $dt.Columns.Add("ParamId",       [int])            > $null
+                $dt.Columns.Add("ParamName",     [string])         > $null
+                $dt.Columns.Add("DataType",      [string])         > $null
+                $dt.Columns.Add("DefaultValue",  [string])         > $null
+                $dt.Columns.Add("IsOutput",      [System.Boolean]) > $null
+                $dt.Columns.Add("IsReadOnly",    [System.Boolean]) > $null
+
+                $visitor.Results | Where-Object Id -notin $idsToExclude | ForEach-Object {
+                    $dr                = $dt.NewRow()
+                    $dr.ModuleId       = $_.ModuleId
+                    $dr.ObjectName     = $_.ObjectName
+                    $dr.StatementType  = $_.StatementType
+                    if ($null -ne $_.ParamId) {
+                        $dr.ParamId    = $_.ParamId
+                    }
+                    $dr.ParamName      = $_.ParamName
+                    $dr.DataType       = $_.DataType
+                    $dr.DefaultValue   = $_.DefaultValue
+                    if ($null -ne $_.IsOutput) {
+                        $dr.IsOutput   = $_.IsOutput
+                    }
+                    if ($null -ne $_.IsReadOnly) {
+                        $dr.IsReadOnly = $_.IsReadOnly
+                    }
+                    $dt.Rows.Add($dr) > $null
+                }
+
+                $tvp = New-Object System.Data.SqlClient.SqlParameter
+                $tvp.ParameterName = "ParameterSet"
+                $tvp.SqlDBtype = [System.Data.SqlDbType]::Structured
+                $tvp.value = $dt
+                $writeCommand.Parameters.Add($tvp) > $null
+                try {
+                    $writeCommand.ExecuteNonQuery() > $null
+                    Write-Host "Wrote to database successfully." -ForegroundColor Green
+                }
+                catch {
+                    Write-Host "Database write failed. $PSItem" -ForegroundColor Yellow
+                }
             }
             catch {
-                Write-Host "Database write failed." -ForegroundColor Yellow
+                Write-Host "Write database connection failed ($($LogToDBServerInstance), $($LogToDBDatabase)) `n$PSItem." -ForegroundColor Yellow
             }
         }
     }

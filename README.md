@@ -73,8 +73,11 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
       - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -Console`
     - To also log the output to a database, run `.\database\DatabaseSupportObjects.sql` somewhere, and then:
       - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -LogToDatabase -LogToDBServerInstance "server" -LogToDBDatabase "database"`
-      - this assumes you can write using current Windows Authentication credentials
-    - If you don't specify `-GridView` or `-LogToDatabase`, you get `-Console`
+      - this will assume Windows Authentiction, but you can  by adding:
+        - `-LogToDBAuthenticationMode "Windows"` 
+      - if you want SQL Authentication, add: 
+        - `-LogToDBAuthenticationMode "SQL" -LogToDBSQLAuthUsername "user" -LogToDBInsecurePassword "password"`
+    - If you don't specify `-GridView` or `-LogToDatabase`, you get `-Console` behavior
   - **For unit testing**, install Pester:
     - `Install-Module Pester`
     - This will allow you to execute unit tests for validation during development efforts
