@@ -60,9 +60,9 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
         - `Get-ParsedParams -ServerInstance "server\instance" -Database "db"` (Windows is the default)
       - To pass in a SecureString SQL Authentication password (assuming you'd get SecureString from another source):
         - `$password = "password" | ConvertTo-SecureString -AsPlainText -Force`
-        - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -SQLAuthUsername "username" -SecurePassword $password`
+        - `Get-ParsedParams ... -AuthenticationMode "SQL" -SQLAuthUsername "username" -SecurePassword $password`
       - To pass in a plaintext SQL Authentication password:
-        - `Get-ParsedParams -ServerInstance "server" -Database "db" -AuthenticationMode "SQL" -SQLAuthUsername "username" -InsecurePassword "password"`
+        - `Get-ParsedParams ... -AuthenticationMode "SQL" -SQLAuthUsername "username" -InsecurePassword "password"`
       - For multiple instances or databases (usually you won't provide multiple of both at the same time):
         - `Get-ParsedParams -ServerInstance "server1","server2" -Database "db"`
         - `Get-ParsedParams -ServerInstance "server" -Database "db1","db2"`
@@ -71,12 +71,15 @@ You need to have the latest ScriptDom.dll locally in order to use the related cl
       - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -GridView`
     - To get the output only in the console:
       - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -Console`
-    - To also log the output to a database, run `.\database\DatabaseSupportObjects.sql` somewhere, and then:
-      - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -LogToDatabase -LogToDBServerInstance "server" -LogToDBDatabase "database"`
-      - this will assume Windows Authentiction, but you can  by adding:
+    - To also log the output to a database, run `.\database\DatabaseSupportObjects.sql` somewhere, and then add:
+      - `-LogToDatabase -LogToDBServerInstance "server" -LogToDBDatabase "database"`
+      - This will assume Windows Authentiction, but you can specify by adding:
         - `-LogToDBAuthenticationMode "Windows"` 
-      - if you want SQL Authentication, add: 
+      - If you want SQL Authentication using a plain text password, add: 
         - `-LogToDBAuthenticationMode "SQL" -LogToDBSQLAuthUsername "user" -LogToDBInsecurePassword "password"`
+      - Or for SQL Authentication with a SecureString password: 
+        - `$password = "password" | ConvertTo-SecureString -AsPlainText -Force`
+        - `Get-ParsedParams ... -LogToDBAuthenticationMode "SQL" -LogToDBSQLAuthUsername "username" -LogToDBSecurePassword $password`
     - If you don't specify `-GridView` or `-LogToDatabase`, you get `-Console` behavior
   - **For unit testing**, install Pester:
     - `Install-Module Pester`
