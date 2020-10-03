@@ -32,10 +32,6 @@ There is also a way to log to a database table (not yet enabled), which will sto
 
 ![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-database-logged.png)
 
-As another reference point, here is what a call against the most recent version of `AdventureWorks` looks like (not quite as interesting as I thought it would be, since they don't use a lot of default values for parameters):
-
-![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-advworks-output.png)
-
 ### Dependencies / How to Start
 
 You need to have the latest ScriptDom.dll locally in order to use the related classes here, but we can't legally give you that file. After that, you can import the ParamParser module, and then run `Get-ParsedParams` with a string, a database, a file, or a directory. 
