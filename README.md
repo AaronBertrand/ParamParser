@@ -28,7 +28,7 @@ The code here parses through all that garbage and outputs the following to `Out-
 
 ![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-some-proc-grid-view.png)
 
-There is also a way to log to a database table (not yet enabled), which will store data like this:
+There is also an option to log to a database table, which will store data like this:
 
 ![](https://sqlperformance.com/wp-content/uploads/2020/10/pp-database-logged.png)
 
@@ -68,7 +68,7 @@ You need to have the latest `ScriptDom.dll` locally in order to use the related 
       - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -GridView`
     - To get the output only in the console:
       - `Get-ParsedParams -File "./dirDemo/dir1/sample1.sql" -Console`
-    - To also log the output to a database, run `.\database\DatabaseSupportObjects.sql` somewhere, and then add:
+    - To also log the output to a database, run `.\database\DatabaseSupportObjects.sql` in some SQL Server database, and then add:
       - `-LogToDatabase -LogToDBServerInstance "server" -LogToDBDatabase "database"`
       - This will assume Windows Authentiction, but you can specify by adding:
         - `-LogToDBAuthenticationMode "Windows"` 
@@ -133,4 +133,7 @@ Basically, more sources, more targets, more options.
   - make it easier to use .\database\DatabaseSupportObjects.sql to log each parse batch - currently quite manual
 - cleaner error handling (e.g. for a typo in file/folder path)
   - also make error handling for database connections optionally more verbose for diagnostics
+- better parameter names (`LogToDBSQLAuthUsername` is a mouthful and a half)
+  - could probably have its own parameter set or pass options in as an array
+  - could also add an option that says write to the same server as I'm reading from
 - maybe it could be an ADS extension, too (see [this post](https://cloudblogs.microsoft.com/sqlserver/2020/09/02/the-release-of-the-azure-data-studio-extension-generator-is-now-available/?_lrsc=85b3aad6-1627-46a6-bf7c-b7e16efb7e6a)) and/or a web-based offering (e.g. Azure function)

@@ -272,7 +272,7 @@ Function Get-ParsedParams
             $thisObject = $visitor.Results[$i];
             $prevObject = $visitor.Results[$i-1];
 
-            if ($prevObject.ModuleId -eq 0) {  $prevObject.ModuleId = 1 }
+            if ($prevObject.ModuleId -eq 0) { $prevObject.ModuleId = 1 }
 
             if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
                 $prevObject.ModuleId -eq $thisObject.ModuleId) {
@@ -300,7 +300,7 @@ Function Get-ParsedParams
 
         if ($GridView -eq $true) {
             # spawn a new GridView window instead, much more concise:        
-            $visitor.Results | Where-Object {$_.Id -notin $idsToExclude} | Out-GridView
+            $visitor.Results | Where-Object {$_.Id -notin $idsToExclude} | Out-GridView -Title "ParamParser Output"           
         }
 
         if ($LogToDatabase -eq $true) {
