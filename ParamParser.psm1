@@ -186,6 +186,8 @@ Function Get-ParsedParams
         [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         [string[]]$ServerInstance,
         [string[]]$Database,
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("SQL", "Windows")]
         [string]$AuthenticationMode = "Windows", # Or SQL - currently all instances use same auth
         #[Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
         #[switch]$Prompt, # to specify _alternate_ Windows auth credentials
@@ -195,12 +197,13 @@ Function Get-ParsedParams
         #NotRecommended!:
         [string]$InsecurePassword,
 
-        [Parameter(Mandatory = $false)]
-        [switch]$GridView = $false,
-        [switch]$Console = $false, # currently logs to console whether you like it or not
-        [switch]$LogToDatabase = $false,
+        [switch]$GridView,
+        [switch]$Console, # currently logs to console whether you like it or not
+        [switch]$LogToDatabase,
         [string]$LogToDBServerInstance,
         [string]$LogToDBDatabase,
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("SQL", "Windows")]
         [string]$LogToDBAuthenticationMode = "Windows",
         [string]$LogToDBSQLAuthUsername,
         [SecureString]$LogToDBSecurePassword,
