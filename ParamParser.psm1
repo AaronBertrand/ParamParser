@@ -161,6 +161,51 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 #endregion
 
 #region functions
+<#
+.SYNOPSIS
+
+
+.DESCRIPTION
+Long description
+
+.PARAMETER Script
+Parameter description
+
+.PARAMETER File
+Parameter description
+
+.PARAMETER Directory
+Parameter description
+
+.PARAMETER ServerInstance
+Parameter description
+
+.PARAMETER Database
+Parameter description
+
+.PARAMETER AuthenticationMode
+Parameter description
+
+.PARAMETER GridView
+Parameter description
+
+.PARAMETER Console
+Parameter description
+
+.PARAMETER LogToDatabase
+Parameter description
+
+.PARAMETER LogToDBAuthenticationMode
+Parameter description
+
+.EXAMPLE
+$password = ConvertTo-SecureString -AsPlainText -Force -String 'secret123'
+$creds = New-Object -TypeName PSCredential -ArgumentList 'myUsername', $password
+Get-ParsedParams -Script "/somewhere/something.sql" -AuthenticationMode SQL -SqlCredential $creds
+
+.NOTES
+General notes
+#>
 Function Get-ParsedParams
 {
     [CmdletBinding()]
