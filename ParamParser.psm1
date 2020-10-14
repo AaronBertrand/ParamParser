@@ -203,6 +203,9 @@ $password = ConvertTo-SecureString -AsPlainText -Force -String 'secret123'
 $creds = New-Object -TypeName PSCredential -ArgumentList 'myUsername', $password
 Get-ParsedParams -Script "/somewhere/something.sql" -AuthenticationMode SQL -SqlCredential $creds
 
+.EXAMPLE
+Get-ParsedParams -Script "/somewhere/something.sql" -AuthenticationMode SQL -SqlCredential (Get-Credential -Username 'myUsername')
+
 .NOTES
 General notes
 #>
