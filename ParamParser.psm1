@@ -201,10 +201,10 @@ Parameter description
 .EXAMPLE
 $password = ConvertTo-SecureString -AsPlainText -Force -String 'secret123'
 $creds = New-Object -TypeName PSCredential -ArgumentList 'myUsername', $password
-Get-ParsedParams -Script "/somewhere/something.sql" -AuthenticationMode SQL -SqlCredential $creds
+Get-ParsedParams -ServerInstance "localhost" -Database "msdb" -AuthenticationMode SQL -SqlCredential $creds
 
 .EXAMPLE
-Get-ParsedParams -Script "/somewhere/something.sql" -AuthenticationMode SQL -SqlCredential (Get-Credential -Username 'myUsername')
+Get-ParsedParams -ServerInstance "localhost" -Database "msdb" -AuthenticationMode SQL -SqlCredential (Get-Credential -Username 'myUsername')
 
 .NOTES
 General notes
@@ -345,7 +345,7 @@ Function Get-ParsedParams
                     $connectionParams.ServerInstance = $ServerInstanceName
                     foreach ($DatabaseName in $Database) {
                         $connectionParams.Database = $DatabaseName
-                        $Connection = Get-SQLConnection @connectionParams
+                        $Connection = Get-DBConnection @connectionParams
                         try {
                             $Connection.Open()
                             $Command = $Connection.CreateCommand()
@@ -428,7 +428,7 @@ Function Get-ParsedParams
             if ($LogToDBSqlCredential) {
                 $connectionParams.SqlCredential = $LogToDBSqlCredential
             }
-            $WriteConnection = Get-SQLConnection @connectionParams
+            $WriteConnection = Get-DBConnection @connectionParams
 
             try {
                 $WriteConnection.Open()
@@ -492,7 +492,7 @@ Function Get-ParsedParams
     }
 }
 
-Function Get-SqlConnection
+Function Get-DBConnection
 {
     [CmdletBinding()]
     param (
