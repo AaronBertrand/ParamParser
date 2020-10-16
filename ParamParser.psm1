@@ -161,53 +161,160 @@ class Visitor: Microsoft.SqlServer.TransactSql.ScriptDom.TSqlFragmentVisitor
 #endregion
 
 #region functions
+<#
+.SYNOPSIS
+
+
+.DESCRIPTION
+Long description
+
+.PARAMETER Script
+Parameter description
+
+.PARAMETER File
+Parameter description
+
+.PARAMETER Directory
+Parameter description
+
+.PARAMETER ServerInstance
+Parameter description
+
+.PARAMETER Database
+Parameter description
+
+.PARAMETER AuthenticationMode
+Parameter description
+
+.PARAMETER GridView
+Parameter description
+
+.PARAMETER Console
+Parameter description
+
+.PARAMETER LogToDatabase
+Parameter description
+
+.PARAMETER LogToDBAuthenticationMode
+Parameter description
+
+.EXAMPLE
+$password = ConvertTo-SecureString -AsPlainText -Force -String 'secret123'
+$creds = New-Object -TypeName PSCredential -ArgumentList 'myUsername', $password
+Get-ParsedParams -ServerInstance "localhost" -Database "msdb" -AuthenticationMode SQL -SqlCredential $creds
+
+.EXAMPLE
+Get-ParsedParams -ServerInstance "localhost" -Database "msdb" -AuthenticationMode SQL -SqlCredential (Get-Credential -Username 'myUsername')
+
+.NOTES
+General notes
+#>
 Function Get-ParsedParams
 {
     [CmdletBinding()]
     param (
-        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "Script")]
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Script")]
         [ValidateNotNullOrEmpty()]
         [string]$Script,
-
-        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "File")]
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "File")]
         [ValidateScript({$PSItem | ForEach-Object {
                 ((Test-Path $_ -PathType Leaf) -and ([System.IO.Path]::GetExtension($_) -ieq ".sql"))
             }
         })]
         [string[]]$File,
-
-        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "Directory")]
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Directory")]
         [ValidateScript({$PSItem | ForEach-Object {
                 (Test-Path $_ -PathType Container)
             }
         })]
         [string[]]$Directory,
-
-        [Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "SQLServer")]
+        [ValidateNotNullOrEmpty()]
         [string[]]$ServerInstance,
+        [Parameter(Position = 1, Mandatory = $true, ParameterSetName = "SQLServer")]
+        [ValidateNotNullOrEmpty()]
         [string[]]$Database,
-        [string]$AuthenticationMode = "Windows", # Or SQL - currently all instances use same auth
-        #[Parameter(Mandatory = $false, ParameterSetName = "SQLServer")]
-        #[switch]$Prompt, # to specify _alternate_ Windows auth credentials
-        # if SQL - can I make this mandatory _if_ SQL is specified?
-        [string]$SQLAuthUsername,
-        [SecureString]$SecurePassword,
-        #NotRecommended!:
-        [string]$InsecurePassword,
-
-        [Parameter(Mandatory = $false)]
-        [switch]$GridView = $false,
-        [switch]$Console = $false, # currently logs to console whether you like it or not
-        [switch]$LogToDatabase = $false,
-        [string]$LogToDBServerInstance,
-        [string]$LogToDBDatabase,
-        [string]$LogToDBAuthenticationMode = "Windows",
-        [string]$LogToDBSQLAuthUsername,
-        [SecureString]$LogToDBSecurePassword,
-        #NotRecommended!:
-        [string]$LogToDBInsecurePassword
+        [Parameter(Position = 2, Mandatory = $false, ParameterSetName = "SQLServer")]
+        [ValidateSet("SQL", "Windows")]
+        [string]$AuthenticationMode = "Windows",
+        [Parameter(Position = 3, Mandatory = $false)]
+        [switch]$GridView,
+        [Parameter(Position = 4, Mandatory = $false)]
+        [switch]$Console, # currently logs to console whether you like it or not
+        [Parameter(Position = 5, Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [switch]$LogToDatabase,
+        [Parameter(Position = 6, Mandatory = $false)]
+        [ValidateSet("SQL", "Windows")]
+        [string]$LogToDBAuthenticationMode = "Windows"
     )
+
+    #region dynamic params
+    DynamicParam {
+        $runtimeDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+
+        # here we inject a dynamic parameter based on whether SQL auth was specified or not.
+        # we use a PSCredential object and set to mandatory. If the user doesn't supply, this has the nice
+        # behavior of prompting them with a nice dialog box
+        if ($AuthenticationMode -eq "SQL") {  
+            $parameterName = 'SqlCredential'
+            $attributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+            $paramAttribute = New-Object System.Management.Automation.ParameterAttribute
+            $paramAttribute.Mandatory = $true
+            $paramAttribute.Position = 7
+            $attributeCollection.Add($paramAttribute)
+            $validateAttribute = New-Object System.Management.Automation.ValidateNotNullOrEmptyAttribute
+            $attributeCollection.Add($validateAttribute)
+            $runtimeParam = New-Object System.Management.Automation.RuntimeDefinedParameter($parameterName, [PSCredential], $attributeCollection)
+            $runtimeDictionary.Add($parameterName, $runtimeParam)
+        }
+        # we also inject the requirements for the logto database and instance
+        if ($LogToDatabase.IsPresent) {
+            $parameterName = 'LogToDBServerInstance'
+            $attributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+            $paramAttribute = New-Object System.Management.Automation.ParameterAttribute
+            $paramAttribute.Mandatory = $true
+            $paramAttribute.Position = 8
+            $attributeCollection.Add($paramAttribute)
+            $validateAttribute = New-Object System.Management.Automation.ValidateNotNullOrEmptyAttribute
+            $attributeCollection.Add($validateAttribute)
+            $runtimeParam = New-Object System.Management.Automation.RuntimeDefinedParameter($parameterName, [string], $attributeCollection)
+            $runtimeDictionary.Add($parameterName, $runtimeParam)
+            $parameterName = 'LogToDBDatabase'
+            $attributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+            $paramAttribute = New-Object System.Management.Automation.ParameterAttribute
+            $paramAttribute.Mandatory = $true
+            $paramAttribute.Position = 9
+            $attributeCollection.Add($paramAttribute)
+            $validateAttribute = New-Object System.Management.Automation.ValidateNotNullOrEmptyAttribute
+            $attributeCollection.Add($validateAttribute)
+            $runtimeParam = New-Object System.Management.Automation.RuntimeDefinedParameter($parameterName, [string], $attributeCollection)
+            $runtimeDictionary.Add($parameterName, $runtimeParam)
+        }
+        # below we force credential input for database based login but only if mode is SQL
+        if ($LogToDatabase.IsPresent -and $LogToDBAuthenticationMode -eq "SQL") {
+            $parameterName = 'LogToDBSqlCredential'
+            $attributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+            $paramAttribute = New-Object System.Management.Automation.ParameterAttribute
+            $paramAttribute.Mandatory = $true
+            $paramAttribute.Position = 10
+            $attributeCollection.Add($paramAttribute)
+            $validateAttribute = New-Object System.Management.Automation.ValidateNotNullOrEmptyAttribute
+            $attributeCollection.Add($validateAttribute)
+            $runtimeParam = New-Object System.Management.Automation.RuntimeDefinedParameter($parameterName, [PSCredential], $attributeCollection)
+            $runtimeDictionary.Add($parameterName, $runtimeParam)
+        }
+
+        return $runtimeDictionary
+    }
+    #endregion
     begin {
+        # bind the dynamic params to expected var names
+        $SqlCredential = $PSBoundParameters["SqlCredential"]
+        $LogToDBServerInstance = $PSBoundParameters["LogToDBServerInstance"]
+        $LogToDBDatabase = $PSBoundParameters["LogToDBDatabase"]
+        $LogToDBSqlCredential = $PSBoundParameters["LogToDBSqlCredential"]
+
         $parser = [Microsoft.SqlServer.TransactSql.ScriptDom.TSql150Parser]($true)::New(); 
         $errors = [System.Collections.Generic.List[Microsoft.SqlServer.TransactSql.ScriptDom.ParseError]]::New();
 
@@ -228,10 +335,17 @@ Function Get-ParsedParams
                 }
             }
             "SQLServer" {
+                $connectionParams = @{
+                    AuthMode = $AuthenticationMode
+                }
+                if ($SqlCredential) {
+                    $connectionParams.SqlCredential = $SqlCredential
+                }
                 foreach ($ServerInstanceName in $ServerInstance) {
+                    $connectionParams.ServerInstance = $ServerInstanceName
                     foreach ($DatabaseName in $Database) {
-                        $Connection = Get-SQLConnection $ServerInstanceName $DatabaseName $AuthenticationMode `
-                                                        $SQLAuthUsername $SecurePassword $InsecurePassword
+                        $connectionParams.Database = $DatabaseName
+                        $Connection = Get-DBConnection @connectionParams
                         try {
                             $Connection.Open()
                             $Command = $Connection.CreateCommand()
@@ -272,7 +386,7 @@ Function Get-ParsedParams
             $thisObject = $visitor.Results[$i];
             $prevObject = $visitor.Results[$i-1];
 
-            if ($prevObject.ModuleId -eq 0) {  $prevObject.ModuleId = 1 }
+            if ($prevObject.ModuleId -eq 0) { $prevObject.ModuleId = 1 }
 
             if ($visitor.ProcedureStatements -icontains $prevObject.StatementType -and 
                 $prevObject.ModuleId -eq $thisObject.ModuleId) {
@@ -300,14 +414,21 @@ Function Get-ParsedParams
 
         if ($GridView -eq $true) {
             # spawn a new GridView window instead, much more concise:        
-            $visitor.Results | Where-Object {$_.Id -notin $idsToExclude} | Out-GridView
+            $visitor.Results | Where-Object {$_.Id -notin $idsToExclude} | Out-GridView -Title "ParamParser Output"           
         }
 
         if ($LogToDatabase -eq $true) {
             # log to database -- requires database-side objects to be created
             # see .\database\DatabaseSupportObjects.sql
-            $WriteConnection = Get-SQLConnection $LogToDBServerInstance $LogToDBDatabase $LogToDBAuthenticationMode `
-                                                 $LogToDBSQLAuthUsername $LogToDBSecurePassword $LogToDBInsecurePassword
+            $connectionParams = @{
+                ServerInstance = $LogToDBServerInstance
+                Database = $LogToDBDatabase
+                AuthMode = $LogToDBAuthenticationMode
+            }
+            if ($LogToDBSqlCredential) {
+                $connectionParams.SqlCredential = $LogToDBSqlCredential
+            }
+            $WriteConnection = Get-DBConnection @connectionParams
 
             try {
                 $WriteConnection.Open()
@@ -371,33 +492,41 @@ Function Get-ParsedParams
     }
 }
 
-Function Get-SQLConnection
-(
-    [string]$ServerInstance, 
-    [string]$Database, 
-    [string]$AuthMode, 
-    [string]$SQLAuthUsername, 
-    [SecureString]$SecurePW, 
-    [string]$InsecurePW
-)
+Function Get-DBConnection
 {
-    $Conn = New-Object System.Data.SqlClient.SqlConnection
-    
-    $ConnectionString = "Server=$($ServerInstance); Database=$($Database);"
-    if ($AuthMode -eq "SQL" -or $SQLAuthUsername -gt "") {
-        if ($InsecurePW -gt "") {
-            $PlainPW = $InsecurePW
+    [CmdletBinding()]
+    param (
+        [Parameter(Position = 0, Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ServerInstance, 
+        [Parameter(Position = 1, Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Database,
+        [Parameter(Position = 2, Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AuthMode,
+        [Parameter(Position = 3, Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [PSCredential]$SqlCredential
+    )
+    begin {
+        $Conn = New-Object System.Data.SqlClient.SqlConnection
+        $ConnectionString = "Server=$($ServerInstance); Database=$($Database);"
+        if ($AuthMode -eq "SQL" -and $null -eq $SqlCredential) {
+            throw "You must supply SqlCredential parameter if using SQL authentication mode."
         }
-        else {
-            $BSTR =  [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePW)
-            $PlainPW = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+        if ($AuthMode -eq "SQL") {
+            $ConnectionString += "User ID=$($SqlCredential.UserName); Password=$($SqlCredential.GetNetworkCredential().Password);"
         }
-        $ConnectionString += "User ID=$($SQLAuthUsername); Password=$($PlainPW);"
+        if ($AuthMode -eq "Windows") {
+            $ConnectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+        }
     }
-    if ($AuthMode -eq "Windows") {
-        $ConnectionString += "Trusted_Connection=Yes; Integrated Security=SSPI;"
+    process {
+        $Conn.ConnectionString = $ConnectionString; 
     }
-    $Conn.ConnectionString = $ConnectionString; 
-    return $Conn
+    end {
+        return $Conn
+    }
 }
 #endregion
